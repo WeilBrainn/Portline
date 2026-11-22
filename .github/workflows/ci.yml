@@ -1,0 +1,85 @@
+name: Build and test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+      - run: go test -race ./...
+      - run: go vet ./...
+      - name: Check script syntax
+        run: |
+          for script in build.sh scripts/*.sh; do
+            bash -n "$script" || exit 1
+          done
+          node --check ui/app.js
+      - run: bash build.sh
+      - uses: actions/upload-artifact@v6
+        with:
+          name: portline-linux-amd64
+          path: portline-linux-amd64
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+      - run: ./build.ps1
+        shell: pwsh
+      - uses: actions/upload-artifact@v6
+        with:
+          name: portline-windows-amd64
+          path: Portline.exe
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Check release version
+        run: test "$GITHUB_REF_NAME" = "v$(sed -n 's/^const version = "\([^"]*\)"$/\1/p' main.go)"
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create draft release
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          chmod +x portline-linux-amd64
+          tar -czf portline-linux-amd64.tar.gz portline-linux-amd64
+          sha256sum Portline.exe portline-linux-amd64.tar.gz > SHA256SUMS.txt
+          gh release create "$GITHUB_REF_NAME" --verify-tag --draft --generate-notes --title "Portline $GITHUB_REF_NAME" \
+            Portline.exe portline-linux-amd64.tar.gz SHA256SUMS.txt

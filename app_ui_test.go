@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -16,7 +17,7 @@ func TestInstallerLogStripsTerminalColors(t *testing.T) {
 
 func TestIndexUsesBuildVersionAndToken(t *testing.T) {
 	app := &App{token: "local-token-123"}
-	request := httptest.NewRequest("GET", "http://127.0.0.1/", nil)
+	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1:8080/", nil)
 	response := httptest.NewRecorder()
 	app.serveHTTP(response, request)
 	if response.Code != 200 {
@@ -30,5 +31,15 @@ func TestIndexUsesBuildVersionAndToken(t *testing.T) {
 	}
 	if strings.Contains(body, "%%VERSION%%") || strings.Contains(body, "%%TOKEN%%") {
 		t.Fatal("template placeholders were not replaced")
+	}
+}
+
+func TestIndexRejectsNonLocalHost(t *testing.T) {
+	app := &App{token: "local-token-123"}
+	request := httptest.NewRequest(http.MethodGet, "http://example.test:8080/", nil)
+	response := httptest.NewRecorder()
+	app.serveHTTP(response, request)
+	if response.Code != http.StatusForbidden || strings.Contains(response.Body.String(), app.token) {
+		t.Fatalf("unexpected response for external host: %d %q", response.Code, response.Body.String())
 	}
 }

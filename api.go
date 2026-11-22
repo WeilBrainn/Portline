@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -9,6 +10,16 @@ import (
 )
 
 func (a *App) serveHTTP(w http.ResponseWriter, r *http.Request) {
+	host := r.Host
+	if name, _, err := net.SplitHostPort(host); err == nil {
+		host = name
+	}
+	// The index contains the API token. Serve it only under the local address.
+	if host != "127.0.0.1" && !strings.EqualFold(host, "localhost") {
+		http.Error(w, "Invalid host", http.StatusForbidden)
+		return
+	}
+
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Frame-Options", "DENY")
@@ -52,8 +63,8 @@ func (a *App) serveHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	switch r.URL.Path {
 	case "/api/status":
-		if r.Method != "GET" {
-			http.Error(w, "Method not allowed", 405)
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		a.mu.Lock()
@@ -63,31 +74,34 @@ func (a *App) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		a.mu.Unlock()
 		_ = json.NewEncoder(w).Encode(s)
 	case "/api/install":
-		if r.Method != "POST" {
-			http.Error(w, "Method not allowed", 405)
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		var data InstallRequest
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64*1024)).Decode(&data); err != nil {
-			http.Error(w, "Некорректный запрос", 400)
+			http.Error(w, "Некорректный запрос", http.StatusBadRequest)
 			return
 		}
 		if err := validate(data); err != nil {
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 			return
 		}
 		a.mu.Lock()
 		if a.busy || a.portBusy {
 			a.mu.Unlock()
-			w.WriteHeader(409)
+			w.WriteHeader(http.StatusConflict)
 			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Установка уже выполняется."})
 			return
 		}
 		a.busy = true
-		a.started = true
 		a.lastAccess = time.Now()
-		a.status = AppStatus{State: "running", Phase: "Соединение с сервером", Progress: 5, Logs: []string{}, Protocol: data.Protocol, Host: data.Host, Started: time.Now().Format(time.RFC3339), HAPP: HAPPTask{State: "idle"}}
+		a.status = AppStatus{
+			State: "running", Phase: "Соединение с сервером", Progress: 5,
+			Logs: []string{}, Protocol: data.Protocol, Host: data.Host,
+			Started: a.lastAccess.Format(time.RFC3339), HAPP: HAPPTask{State: "idle"},
+		}
 		a.mu.Unlock()
 		go a.install(data)
 		w.WriteHeader(http.StatusAccepted)

@@ -72,7 +72,6 @@ type App struct {
 	portBusy   bool
 	portKey    string
 	lastAccess time.Time
-	started    bool
 }
 
 // Strip terminal control sequences before placing server output in the browser.
