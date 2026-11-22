@@ -1,0 +1,8 @@
+Portline.exe
+portline-linux-amd64
+*.exe.tmp
+*.test
+*.log
+*.partial
+.vscode/
+.idea/

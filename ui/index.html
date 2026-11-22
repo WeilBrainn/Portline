@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="ru">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <meta content="%%TOKEN%%" name="app-token"/>
+  <meta content="#22323b" name="theme-color"/>
+  <title>
+   Portline — настройка VPS
+  </title>
+  <link href="/style.css" rel="stylesheet"/>
+ </head>
+ <body>
+  <div class="shell">
+   <aside class="sidebar">
+    <header class="brand">
+     <span class="brand-symbol">
+      <i>
+      </i>
+      <i>
+      </i>
+      <i>
+      </i>
+     </span>
+     <span>
+      portline
+     </span>
+    </header>
+    <div class="sidebar-intro">
+     <span class="micro light">
+      ЛОКАЛЬНОЕ ПРИЛОЖЕНИЕ
+     </span>
+     <h2>
+      Настройка VPS
+     </h2>
+     <p>
+      Установка и управление подключением.
+     </p>
+    </div>
+    <nav aria-label="Этапы настройки" class="steps">
+     <button class="step is-active" data-goto="1" type="button">
+      <span class="step-num">
+       01
+      </span>
+      <span class="step-text">
+       <strong>
+        Доступ к серверу
+       </strong>
+       <small>
+        Подключение SSH
+       </small>
+      </span>
+      <span class="step-mark">
+       •
+      </span>
+     </button>
+     <button class="step" data-goto="2" disabled="" type="button">
+      <span class="step-num">
+       02
+      </span>
+      <span class="step-text">
+       <strong>
+        Протокол
+       </strong>
+       <small>
+        Режим и порт
+       </small>
+      </span>
+      <span class="step-mark">
+       •
+      </span>
+     </button>
+     <button class="step" data-goto="3" disabled="" type="button">
+      <span class="step-num">
+       03
+      </span>
+      <span class="step-text">
+       <strong>
+        Развёртывание
+       </strong>
+       <small>
+        Настройка VPS
+       </small>
+      </span>
+      <span class="step-mark">
+       •
+      </span>
+     </button>
+     <button class="step" data-goto="4" disabled="" type="button">
+      <span class="step-num">
+       04
+      </span>
+      <span class="step-text">
+       <strong>
+        Подключение
+       </strong>
+       <small>
+        Ссылка для HAPP
+       </small>
+      </span>
+      <span class="step-mark">
+       •
+      </span>
+     </button>
+    </nav>
+    <div class="sidebar-bottom">
+     <div aria-hidden="true" class="line-schematic">
+      <span>
+       PC
+      </span>
+      <div>
+       <b>
+       </b>
+       <b>
+       </b>
+       <b>
+       </b>
+      </div>
+      <span>
+       VPS
+      </span>
+     </div>
+     <div class="local-note">
+      <span class="local-dot">
+      </span>
+      Локальная панель
+      <span class="version">
+       v%%VERSION%%
+      </span>
+     </div>
+    </div>
+   </aside>
+   <div class="workspace">
+    <div class="topbar">
+     <div class="crumb">
+      Узлы
+      <span>
+       /
+      </span>
+      <strong>
+       Настройка сервера
+      </strong>
+     </div>
+     <div class="top-right">
+      <span class="top-indicator">
+       <span class="indicator-pulse">
+       </span>
+       Локальная панель
+      </span>
+      <button aria-label="Закрыть программу" class="quit-btn" id="quitBtn" title="Закрыть программу" type="button">
+       ×
+      </button>
+     </div>
+    </div>
+    <main class="content">
+     <div class="main-col">
+      <section aria-labelledby="title1" class="panel visible" data-panel="1">
+       <div class="panel-eyebrow">
+        <span class="eyebrow-line">
+        </span>
+        ШАГ 01 / 04
+        <span class="eyebrow-end">
+         СОЕДИНЕНИЕ
+        </span>
+       </div>
+       <h1 id="title1">
+        Подключение к VPS
+       </h1>
+       <p class="intro">
+        Введи адрес и данные SSH. Они нужны для установки серверного ПО и не сохраняются в настройках Portline.
+       </p>
+       <form id="serverForm" novalidate="">
+        <div class="input-stack">
+         <div class="field">
+          <label for="host">
+           IP-адрес или домен VPS
+           <span class="required">
+            *
+           </span>
+          </label>
+          <input autocomplete="off" id="host" name="host" placeholder="203.0.113.24" required="" spellcheck="false"/>
+          <span class="field-hint">
+           Внешний адрес сервера, без https://
+          </span>
+         </div>
+         <div class="fields-two">
+          <div class="field">
+           <label for="sshPort">
+            SSH-порт
+           </label>
+           <input id="sshPort" max="65535" min="1" name="sshPort" required="" type="number" value="22"/>
+          </div>
+          <div class="field">
+           <label for="username">
+            Пользователь SSH
+           </label>
+           <input autocomplete="username" id="username" name="username" required="" spellcheck="false" value="root"/>
+          </div>
+         </div>
+         <div class="field">
+          <label for="auth">
+           Авторизация
+          </label>
+          <select id="auth" name="auth">
+           <option value="password">
+            Пароль
+           </option>
+           <option value="key">
+            Файл приватного SSH-ключа
+           </option>
+          </select>
+         </div>
+         <div class="field" id="passwordBox">
+          <label for="password">
+           Пароль SSH
+           <span class="required">
+            *
+           </span>
+          </label>
+          <div class="password-control">
+           <input autocomplete="off" id="password" placeholder="Пароль от VPS" type="password"/>
+           <button aria-label="Показать пароль" class="text-utility" id="togglePassword" type="button">
+            Показать
+           </button>
+          </div>
+          <span class="field-hint">
+           Пароль не сохраняется на диске.
+          </span>
+         </div>
+         <div class="field hidden" id="keyBox">
+          <label for="keyFile">
+           Путь к приватному ключу
+           <span class="required">
+            *
+           </span>
+          </label>
+          <input id="keyFile" placeholder="C:\Users\User\.ssh\id_ed25519" spellcheck="false"/>
+          <span class="field-hint">
+           Используй абсолютный путь к ключу на своём компьютере.
+          </span>
+         </div>
+        </div>
+        <div class="form-error" hidden="" id="serverError" role="alert">
+        </div>
+        <div class="action-row">
+         <span class="action-helper">
+          SSH-данные не сохраняются в настройках
+         </span>
+         <button class="primary-btn" type="submit">
+          Продолжить
+         </button>
+        </div>
+       </form>
+      </section>
+      <section aria-labelledby="title2" class="panel" data-panel="2">
+       <div class="panel-eyebrow">
+        <span class="eyebrow-line">
+        </span>
+        ШАГ 02 / 04
+        <span class="eyebrow-end">
+         КОНФИГУРАЦИЯ
+        </span>
+       </div>
+       <h1 id="title2">
+        Настройка протокола
+       </h1>
+       <p class="intro">
+        Выбери протокол и порт. Перед установкой можно проверить, не занят ли порт на VPS.
+       </p>
+       <div aria-label="Выбор протокола" class="protocol-list">
+        <button aria-pressed="true" class="protocol-option selected" data-protocol="vless" type="button">
+         <div class="protocol-icon">
+          <svg aria-hidden="true" viewbox="0 0 40 40">
+           <path d="M7 29V11h10v18M17 20h9l7-9M26 20l7 9" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2.5">
+           </path>
+          </svg>
+         </div>
+         <div class="protocol-details">
+          <strong>
+           VLESS + REALITY
+          </strong>
+          <span>
+           TCP · REALITY · собственный домен не требуется
+          </span>
+         </div>
+         <span class="proto-check">
+          <svg aria-hidden="true" viewbox="0 0 20 20">
+           <path d="m4 10 4 4 8-8" fill="none" stroke="currentColor" stroke-width="2.5">
+           </path>
+          </svg>
+         </span>
+        </button>
+        <button aria-pressed="false" class="protocol-option" data-protocol="hy2" type="button">
+         <div class="protocol-icon">
+          <svg aria-hidden="true" viewbox="0 0 40 40">
+           <path d="M9 27 19 13l4 10 8-10M9 30h22" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2.5">
+           </path>
+          </svg>
+         </div>
+         <div class="protocol-details">
+          <strong>
+           Hysteria 2
+          </strong>
+          <span>
+           UDP / QUIC · закрепление сертификата
+          </span>
+         </div>
+         <span class="proto-check">
+          <svg aria-hidden="true" viewbox="0 0 20 20">
+           <path d="m4 10 4 4 8-8" fill="none" stroke="currentColor" stroke-width="2.5">
+           </path>
+          </svg>
+         </span>
+        </button>
+       </div>
+       <div class="protocol-settings">
+        <div class="fields-two">
+         <div class="field">
+          <label for="vpnPort">
+           Порт протокола
+          </label>
+          <input id="vpnPort" max="65535" min="1" type="number" value="443"/>
+          <span class="field-hint" id="portHint">
+           TCP, по умолчанию 443
+          </span>
+         </div>
+         <div class="field" id="sniBox">
+          <label for="sni">
+           TLS SNI
+          </label>
+          <input id="sni" spellcheck="false" value="www.cloudflare.com"/>
+          <span class="field-hint">
+           Домен для REALITY (не твой домен)
+          </span>
+         </div>
+        </div>
+       </div>
+       <div aria-labelledby="portToolTitle" class="port-tool">
+        <div class="port-tool-head">
+         <div>
+          <span class="micro">
+           УПРАВЛЕНИЕ ПОРТОМ VPS
+          </span>
+          <strong id="portToolTitle">
+           Проверка порта на VPS
+          </strong>
+         </div>
+         <button class="secondary-btn port-check-btn" id="portCheckBtn" type="button">
+          Проверить порт
+         </button>
+        </div>
+        <p class="port-helper">
+         Проверяется только занятость порта на сервере. Внешние правила сетевого экрана VPS нужно проверять отдельно.
+        </p>
+        <div aria-live="polite" class="port-response" hidden="" id="portResponse" role="status">
+         <div class="port-response-head">
+          <span class="port-state-dot" id="portStateDot">
+          </span>
+          <strong id="portMessage">
+          </strong>
+         </div>
+         <p class="port-owner" hidden="" id="portOwner">
+         </p>
+         <div class="port-suggestions" hidden="" id="portSuggestions">
+          <span>
+           Другие свободные порты:
+          </span>
+          <div id="portSuggestedList">
+          </div>
+         </div>
+         <button class="port-stop-btn" hidden="" id="portStopBtn" type="button">
+          Остановить службу
+         </button>
+        </div>
+       </div>
+       <div class="notice">
+        <span class="notice-mark">
+         i
+        </span>
+        <p id="protocolNotice">
+         REALITY работает без собственного домена. На сервер будут установлены Xray-core и автозапуск через systemd.
+        </p>
+       </div>
+       <div class="form-error" hidden="" id="protocolError" role="alert">
+       </div>
+       <div class="action-row">
+        <button class="back-btn" id="back1" type="button">
+         ← Назад
+        </button>
+        <button class="primary-btn" id="reviewBtn" type="button">
+         Продолжить
+        </button>
+       </div>
+      </section>
+      <section aria-labelledby="title3" class="panel" data-panel="3">
+       <div class="panel-eyebrow">
+        <span class="eyebrow-line">
+        </span>
+        ШАГ 03 / 04
+        <span class="eyebrow-end">
+         РАЗВЁРТЫВАНИЕ
+        </span>
+       </div>
+       <h1 id="title3">
+        Установка на сервер
+       </h1>
+       <p class="intro" id="installSub">
+        Установка выполняется по SSH. Журнал ниже показывает действия на сервере и помогает разобраться с ошибками.
+       </p>
+       <div class="install-card">
+        <div class="install-card-top">
+         <div>
+          <span class="micro">
+           ТЕКУЩИЙ ЭТАП
+          </span>
+          <strong id="installPhase">
+           Подключение к серверу
+          </strong>
+         </div>
+         <span id="progressNumber">
+          0%
+         </span>
+        </div>
+        <div class="progress-track">
+         <span id="progressFill">
+         </span>
+        </div>
+        <div class="progress-foot">
+         <span>
+          Подключение · конфигурация · запуск
+         </span>
+         <span id="progressStatus">
+          В процессе
+         </span>
+        </div>
+       </div>
+       <div class="terminal">
+        <div class="terminal-head">
+         <span>
+          Журнал установки
+         </span>
+         <span class="terminal-live" id="terminalStatus">
+          ВЫПОЛНЯЕТСЯ
+         </span>
+        </div>
+        <pre aria-live="polite" id="installLogs">&gt; Журнал появится после соединения…</pre>
+       </div>
+       <div class="form-error" hidden="" id="installError" role="alert">
+       </div>
+       <div class="action-row">
+        <span class="action-helper">
+         При закрытии приложения установка прервётся
+        </span>
+        <button class="secondary-btn" hidden="" id="resolvePortBtn" type="button">
+         Управлять портом
+        </button>
+        <button class="primary-btn" hidden="" id="retryBtn" type="button">
+         Повторить установку
+        </button>
+       </div>
+      </section>
+      <section aria-labelledby="title4" class="panel" data-panel="4">
+       <div class="panel-eyebrow">
+        <span class="eyebrow-line">
+        </span>
+        ШАГ 04 / 04
+        <span class="eyebrow-end">
+         ГОТОВО
+        </span>
+       </div>
+       <div aria-hidden="true" class="success-emblem">
+        <svg viewbox="0 0 54 54">
+         <path d="M12 28 23 39 43 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+         </path>
+        </svg>
+       </div>
+       <h1 id="title4">
+        Сервер настроен
+       </h1>
+       <p class="intro">
+        Служба запущена и добавлена в автозапуск. Чтобы подключиться с этого компьютера, импортируй профиль в HAPP.
+       </p>
+       <div class="result-card">
+        <div class="result-heading">
+         <span class="micro">
+          ССЫЛКА ПОДКЛЮЧЕНИЯ
+         </span>
+         <span class="result-private">
+          <span>
+          </span>
+          Содержит ключ доступа
+         </span>
+        </div>
+        <div class="result-link-row">
+         <code class="masked-link" id="resultLink">
+          ••••••••••••••••••••••••••••••
+         </code>
+         <button aria-label="Показать или скрыть ссылку" class="icon-button" id="revealBtn" title="Показать/скрыть ссылку" type="button">
+          ◉
+         </button>
+        </div>
+        <div class="result-actions">
+         <button class="primary-btn" id="copyBtn" type="button">
+          Скопировать ссылку
+         </button>
+         <button class="secondary-btn" id="saveBtn" type="button">
+          Сохранить в файл
+         </button>
+        </div>
+       </div>
+       <div class="happ-setup">
+        <div class="happ-setup-title">
+         <span class="micro">
+          ПОДКЛЮЧЕНИЕ НА ЭТОМ ПК
+         </span>
+         <strong>
+          Подключение через HAPP
+         </strong>
+         <p>
+          Передай профиль в HAPP. Для маршрутизации всего трафика включи TUN в HAPP и проверь DNS и IPv6.
+         </p>
+        </div>
+        <div class="happ-setup-actions">
+         <button class="primary-btn" id="openHappBtn" type="button">
+          Открыть в HAPP
+         </button>
+         <button class="secondary-btn" id="installHappBtn" type="button">
+          Установить HAPP
+         </button>
+        </div>
+        <p aria-live="polite" class="happ-message" id="happMessage" role="status">
+        </p>
+        <a class="happ-manual" hidden="" href="https://github.com/Happ-proxy/happ-desktop/releases" id="happDownloadLink" rel="noopener noreferrer" target="_blank">
+         Открыть страницу HAPP
+        </a>
+       </div>
+       <div class="notice">
+        <span class="notice-mark">
+         !
+        </span>
+        <p>
+         Ссылка содержит ключ доступа — не передавай её другим. Для полного туннеля требуется включить TUN в HAPP и проверить DNS/IPv6. Для Hysteria 2 клиент должен проверять pinSHA256.
+        </p>
+       </div>
+       <div class="action-row">
+        <span class="action-helper">
+         Служба продолжит работать после закрытия Portline
+        </span>
+        <button class="back-btn" id="newBtn" type="button">
+         Настроить другой сервер
+        </button>
+       </div>
+      </section>
+     </div>
+     <aside aria-label="Параметры и подсказки" class="detail-col">
+      <div class="detail-card server-card">
+       <div class="detail-title">
+        <span class="micro">
+         ПАРАМЕТРЫ СЕРВЕРА
+        </span>
+        <span class="status-pill" id="nodeStatus">
+         <i>
+         </i>
+         Не настроен
+        </span>
+       </div>
+       <div aria-hidden="true" class="node-art">
+        <div class="route-endpoint">
+         ПК
+        </div>
+        <div class="route-cable">
+         <span>
+         </span>
+        </div>
+        <div class="route-endpoint route-server">
+         VPS
+        </div>
+       </div>
+       <dl class="node-info">
+        <div>
+         <dt>
+          Доступ
+         </dt>
+         <dd>
+          Через SSH
+         </dd>
+        </div>
+        <div>
+         <dt>
+          Протокол
+         </dt>
+         <dd id="nodeProtocol">
+          Не выбран
+         </dd>
+        </div>
+        <div>
+         <dt>
+          Адрес
+         </dt>
+         <dd class="mono" id="nodeHost">
+          —
+         </dd>
+        </div>
+        <div>
+         <dt>
+          Порт
+         </dt>
+         <dd id="nodePort">
+          —
+         </dd>
+        </div>
+       </dl>
+      </div>
+      <div class="detail-card guidance">
+       <div class="detail-title">
+        <span class="micro" id="tipMicro">
+         ПОДСКАЗКА
+        </span>
+        <span class="detail-icon">
+         ↗
+        </span>
+       </div>
+       <h3 id="tipTitle">
+        Настройка без терминала
+       </h3>
+       <p id="tipText">
+        Portline подключится к VPS по SSH, установит сервис и создаст ссылку для импорта в HAPP.
+       </p>
+       <div class="guidance-divider">
+       </div>
+       <div class="guidance-footer">
+        <span class="guide-number">
+         01 / 04
+        </span>
+        <span id="tipFooter">
+         Подключение по SSH
+        </span>
+       </div>
+      </div>
+      <div class="detail-footer">
+       PORTLINE
+       <span>
+        ·
+       </span>
+       УПРАВЛЕНИЕ ЛИЧНЫМ VPS
+      </div>
+     </aside>
+    </main>
+   </div>
+  </div>
+  <div class="modal-backdrop" hidden="" id="confirmModal" role="presentation">
+   <div aria-labelledby="modalTitle" aria-modal="true" class="modal" role="dialog">
+    <div class="modal-kicker">
+     ПОДТВЕРЖДЕНИЕ
+    </div>
+    <h2 id="modalTitle">
+     Установить выбранный протокол?
+    </h2>
+    <p>
+     Portline обновит пакеты и конфигурацию выбранного сервиса на VPS. Текущая конфигурация будет сохранена в резервную копию; работающие подключения могут прерваться.
+    </p>
+    <div class="modal-summary" id="modalSummary">
+    </div>
+    <div class="modal-actions">
+     <button class="secondary-btn" id="cancelInstall" type="button">
+      Отмена
+     </button>
+     <button class="primary-btn" id="confirmInstall" type="button">
+      Установить на VPS
+     </button>
+    </div>
+   </div>
+  </div>
+  <div class="modal-backdrop" hidden="" id="stopPortModal" role="presentation">
+   <div aria-labelledby="stopPortTitle" aria-modal="true" class="modal" role="dialog">
+    <div class="modal-kicker">
+     ТРЕБУЕТ ПОДТВЕРЖДЕНИЯ
+    </div>
+    <h2 id="stopPortTitle">
+     Остановить службу на VPS?
+    </h2>
+    <p>
+     Остановка может отключить сайт или действующий VPN. Конфигурация останется на диске, а служба может снова запуститься после перезагрузки.
+    </p>
+    <div class="modal-summary" id="stopPortSummary">
+    </div>
+    <div class="modal-actions">
+     <button class="secondary-btn" id="cancelStopPort" type="button">
+      Отмена
+     </button>
+     <button class="primary-btn" id="confirmStopPort" type="button">
+      Остановить службу
+     </button>
+    </div>
+   </div>
+  </div>
+  <div aria-live="polite" class="toast" id="toast" role="status">
+  </div>
+  <script defer="" src="/app.js">
+  </script>
+ </body>
+</html>
