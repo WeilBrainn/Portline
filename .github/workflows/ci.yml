@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
           cache: false
@@ -31,7 +31,7 @@ jobs:
           done
           node --check ui/app.js
       - run: bash build.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: portline-linux-amd64
           path: portline-linux-amd64
@@ -44,13 +44,13 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
           cache: false
       - run: ./build.ps1
         shell: pwsh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: portline-windows-amd64
           path: Portline.exe
@@ -69,7 +69,7 @@ jobs:
           persist-credentials: false
       - name: Check release version
         run: test "$GITHUB_REF_NAME" = "v$(sed -n 's/^const version = "\([^"]*\)"$/\1/p' main.go)"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: dist
           merge-multiple: true
