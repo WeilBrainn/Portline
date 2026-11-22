@@ -1,8 +1,15 @@
-Portline.exe
-portline-linux-amd64
+/Portline.exe
+/portline-linux-amd64
+/dist/
 *.exe.tmp
 *.test
 *.log
 *.partial
 .vscode/
 .idea/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.ppk

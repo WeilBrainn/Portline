@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -10,8 +11,13 @@ import (
 // Test the exact Bash parser embedded in the VPS installer. A Go-only reimplementation
 // would not have caught the Xray 26.11.9 label regression.
 func TestX25519ParserXrayOutputVariants(t *testing.T) {
-	if _, err := exec.LookPath("bash"); err != nil {
-		t.Skip("Bash unavailable; run Bash parser regression tests on Linux/CI")
+	bash, err := exec.LookPath("bash")
+	// Windows may resolve bash.exe to the WSL launcher without a Linux distro.
+	if runtime.GOOS == "windows" && (err != nil || exec.Command(bash, "-c", "exit 0").Run() != nil) {
+		t.Skip("no working Bash; this test also runs on Linux")
+	}
+	if err != nil {
+		t.Fatal(err)
 	}
 	src, err := os.ReadFile("scripts/vless.sh")
 	if err != nil {
@@ -45,7 +51,7 @@ else
   printf 'INVALID\n'
 fi
 `
-			cmd := exec.Command("bash", "-c", shell, "portline-parser-test", tc.input)
+			cmd := exec.Command(bash, "-c", shell, "portline-parser-test", tc.input)
 			result, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("bash failed: %s: %v", result, err)

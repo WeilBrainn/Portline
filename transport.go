@@ -22,11 +22,8 @@ import (
 	"unicode/utf16"
 )
 
-// No external Go modules are required. On Windows, Portline automatically
-// provisions the Microsoft OpenSSH Client when absent. If Windows Update,
-// permissions, or enterprise policies block this, it downloads a portable,
-// SHA-256-pinned copy of the official PuTTY/Plink binary. No manual setup.
-// The optional portable fallback currently supports passwords or .ppk keys.
+// Portable Plink is fetched only when OpenSSH is missing and can be used with
+// a password or a PuTTY key. Verify its digest before running it.
 const (
 	plinkURL    = "https://the.earth.li/~sgtatham/putty/0.85/w64/plink.exe"
 	plinkSHA256 = "969f36879d5716aa1a9811f43a6a6510e8f08372dbeb9695b810b9c776f39c75"

@@ -10,7 +10,10 @@ const hints = [
     { micro: 'ПОДСКАЗКА', title: 'Следи за журналом', text: 'Установка проходит по SSH. Сначала создаётся конфигурация, затем запускается служба systemd.', footer: 'Служба запускается на VPS' },
     { micro: 'ПОДСКАЗКА', title: 'Последний шаг — HAPP', text: 'Импортируй конфигурацию, включи TUN и отдельно проверь внешний IP, DNS и IPv6.', footer: 'Импорт → TUN → проверка' }
 ];
-let step = 1, selectedProtocol = 'vless', lastStatus = null, lastLink = '', revealed = false;
+let step = 1;
+let selectedProtocol = 'vless';
+let lastLink = '';
+let revealed = false;
 let pollTimer = null, happPollTimer = null, portPollTimer = null, toastTimer = null, requestInFlight = false;
 let lastPortResult = null;
 let statusFailures = 0;
@@ -200,7 +203,6 @@ $('confirmInstall').addEventListener('click', beginInstall);
 $('retryBtn').addEventListener('click', () => openDialog('confirmModal', 'confirmInstall'));
 $('resolvePortBtn').addEventListener('click', () => { setStep(2); checkPort(); });
 function updateInstall(status) {
-    lastStatus = status;
     $('installPhase').textContent = status.phase || 'Развёртывание';
     $('progressNumber').textContent = status.progress + '%';
     $('progressFill').style.width = status.progress + '%';
