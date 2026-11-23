@@ -555,6 +555,18 @@ async function refreshTunnel() {
         const stateNames = {connected:'VPN подключён',running:'Подключение…',disconnecting:'Отключение…',disconnected:'Отключено',error:'Ошибка подключения',idle:'Не подключено'};
         $('connectionState').textContent = stateNames[state.state] || 'Не подключено';
         $('connectionHero').dataset.state = state.state || 'idle';
+        const serverPill = $('connectionServerPill');
+        if (serverPill) {
+            const h = ($('successHost')?.textContent || '').trim();
+            const p = ($('successPort')?.textContent || '').trim();
+            const ep = (state.endpoint || '').trim() || (h && h !== '—' ? (p && p !== '—' ? `${h}:${p}` : h) : '');
+            if (ep) {
+                serverPill.textContent = ep;
+                serverPill.hidden = false;
+            } else {
+                serverPill.hidden = true;
+            }
+        }
         $('nativeStatus').textContent = state.message || state.phase || 'Готов к подключению';
         $('firewallFix').hidden = !(state.needsFirewall || (connected && state.guardMode === 'routes'));
         $('enableFirewallBtn').disabled = connected || busy;
@@ -650,6 +662,25 @@ $('enableFirewallBtn').addEventListener('click', async () => {
 });
 $('nativeConnectBtn').addEventListener('click', () => startNativeTunnel('connect'));
 $('nativeDisconnectBtn').addEventListener('click', () => startNativeTunnel('disconnect'));
+if ($('connectionOrbBtn')) {
+    $('connectionOrbBtn').addEventListener('click', () => {
+        const st = $('connectionHero')?.dataset.state || 'idle';
+        if (st === 'connected' || st === 'running') {
+            startNativeTunnel('disconnect');
+        } else if (st !== 'disconnecting') {
+            startNativeTunnel('connect');
+        }
+    });
+}
+if ($('mobGotoSsh')) {
+    $('mobGotoSsh').addEventListener('click', () => setStep(1));
+}
+if ($('mobImportFile')) {
+    $('mobImportFile').addEventListener('click', () => $('importTunnelBtn')?.click());
+}
+if ($('mobShareKey')) {
+    $('mobShareKey').addEventListener('click', () => $('copyTunnelConfigBtn')?.click());
+}
 $('newBtn').addEventListener('click', () => { resetPortResult(); if (happPollTimer) {
     clearInterval(happPollTimer);
     happPollTimer = null;

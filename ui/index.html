@@ -132,6 +132,10 @@
    </aside>
    <div class="workspace">
     <div class="topbar">
+     <div class="mobile-brand">
+      <span class="mobile-brand-logo"><span class="mobile-brand-accent">PO</span>RTLINE</span>
+      <span class="mobile-brand-ver">v%%VERSION%%</span>
+     </div>
      <div class="crumb">
       Узлы
       <span>
@@ -143,8 +147,14 @@
      </div>
      <div class="top-right">
       <button class="update-pill" id="updateBadge" type="button" hidden>Обновить ↗</button>
-      <button class="secondary-btn compact-btn top-util-btn" id="logsBtn" type="button" title="Журнал туннеля и SSH">Логи</button>
-      <button class="secondary-btn compact-btn top-util-btn" id="checkUpdateBtn" type="button" title="Проверить обновления на GitHub">Обновления</button>
+      <button class="secondary-btn compact-btn top-util-btn" id="logsBtn" type="button" title="Журнал туннеля и SSH">
+       <svg class="top-util-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+       <span class="btn-label">Логи</span>
+      </button>
+      <button class="secondary-btn compact-btn top-util-btn" id="checkUpdateBtn" type="button" title="Проверить обновления на GitHub">
+       <svg class="top-util-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="1.5"></circle><circle cx="12" cy="12" r="1.5"></circle><circle cx="12" cy="19" r="1.5"></circle></svg>
+       <span class="btn-label">Обновления</span>
+      </button>
       <span class="top-indicator" id="topIndicator">
        <span class="indicator-pulse">
        </span>
@@ -591,14 +601,19 @@
           <p>Собственный VPN-клиент Portline с TLS 1.3. При первом подключении устанавливается низкоуровневый сетевой адаптер Wintun. Для изменения маршрутов требуются права администратора.</p>
         </div>
         <div class="connection-hero" id="connectionHero" data-state="idle">
-         <div class="connection-orb" aria-hidden="true">
+         <button class="connection-orb" id="connectionOrbBtn" type="button" aria-label="Подключить или отключить VPN">
           <span class="orb-ring"></span>
           <span class="orb-ring orb-ring-2"></span>
           <span class="connection-orb-core"></span>
-         </div>
+          <svg class="orb-power-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+           <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+           <line x1="12" y1="2" x2="12" y2="12"></line>
+          </svg>
+         </button>
          <div class="connection-copy">
           <span class="micro">СОСТОЯНИЕ СОЕДИНЕНИЯ</span>
           <strong id="connectionState">Не подключено</strong>
+          <span class="connection-server-pill" id="connectionServerPill" hidden>—</span>
           <span class="connection-caption" id="connectionCaption">Полный туннель IPv4 · блокировка утечек DNS, IPv6 и локальных обходов</span>
           <div class="shield-pills" id="shieldPills">
            <span class="shield-pill">0.0.0.0/0 → VPS</span>
@@ -613,6 +628,30 @@
          <div class="telemetry-item"><span>Отправлено</span><strong id="metricSent">0</strong></div>
          <div class="telemetry-item"><span>Получено</span><strong id="metricRecv">0</strong></div>
          <div class="telemetry-item"><span>Время</span><strong id="metricUptime">00:00:00</strong></div>
+        </div>
+        <div class="mobile-quick-card" aria-label="Подключение и сервер">
+         <div class="mobile-quick-title">Подключение и сервер</div>
+         <button class="mobile-quick-row" id="mobGotoSsh" type="button">
+          <span class="mobile-quick-icon">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+          </span>
+          <span class="mobile-quick-label">Настроить сервер (SSH)</span>
+          <span class="mobile-quick-chevron">›</span>
+         </button>
+         <button class="mobile-quick-row" id="mobImportFile" type="button">
+          <span class="mobile-quick-icon">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          </span>
+          <span class="mobile-quick-label">Импорт профиля</span>
+          <span class="mobile-quick-chevron">›</span>
+         </button>
+         <button class="mobile-quick-row" id="mobShareKey" type="button">
+          <span class="mobile-quick-icon">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          </span>
+          <span class="mobile-quick-label">Поделиться ключом</span>
+          <span class="mobile-quick-chevron">›</span>
+         </button>
         </div>
         <div class="happ-setup-actions connection-actions">
           <button class="primary-btn" id="nativeConnectBtn" type="button">Подключить VPN</button>

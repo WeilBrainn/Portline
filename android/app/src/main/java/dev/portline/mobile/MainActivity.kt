@@ -22,7 +22,7 @@ import android.widget.FrameLayout
 
 class MainActivity : Activity() {
     companion object {
-        private const val APP_VERSION = "1.4.5"
+        private const val APP_VERSION = "1.4.6"
         private const val REQ_VPN = 1
         private const val REQ_FILE = 2
         private const val REQ_NOTIFY = 3
