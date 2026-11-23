@@ -26,18 +26,25 @@ object ProfileVault {
     }
     fun save(context: Context, encoded: String) {
         PortlineProfile.decode(encoded)
+        saveSecret(context, "profile", encoded)
+    }
+
+    fun load(context: Context): String? = loadSecret(context, "profile")
+
+    fun saveSecret(context: Context, prefKey: String, plain: String) {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key())
-        val payload = cipher.iv + cipher.doFinal(encoded.toByteArray(Charsets.UTF_8))
+        val payload = cipher.iv + cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
         context.getSharedPreferences(store, Context.MODE_PRIVATE).edit()
-            .putString("profile", Base64.encodeToString(payload, Base64.NO_WRAP)).apply()
+            .putString(prefKey, Base64.encodeToString(payload, Base64.NO_WRAP)).apply()
     }
-    fun load(context: Context): String? {
-        val saved = context.getSharedPreferences(store, Context.MODE_PRIVATE).getString("profile", null) ?: return null
+
+    fun loadSecret(context: Context, prefKey: String): String? {
+        val saved = context.getSharedPreferences(store, Context.MODE_PRIVATE).getString(prefKey, null) ?: return null
         val raw = Base64.decode(saved, Base64.NO_WRAP)
-        require(raw.size > 12) { "Повреждён сохранённый профиль" }
+        require(raw.size > 12) { "Повреждённые данные в хранилище" }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, raw.copyOfRange(0,12)))
-        return String(cipher.doFinal(raw.copyOfRange(12,raw.size)), Charsets.UTF_8)
+        cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, raw.copyOfRange(0, 12)))
+        return String(cipher.doFinal(raw.copyOfRange(12, raw.size)), Charsets.UTF_8)
     }
 }

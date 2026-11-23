@@ -227,11 +227,20 @@ class PortlineVpnService : VpnService() {
         context.init(null, arrayOf<TrustManager>(trust), SecureRandom())
         val secure = context.socketFactory.createSocket(upstream, profile.host, profile.port, true) as SSLSocket
         tls = secure
-        secure.enabledProtocols = arrayOf("TLSv1.3")
+        val params = secure.sslParameters
+        params.protocols = arrayOf("TLSv1.3")
         if (Build.VERSION.SDK_INT >= 29) {
-            secure.sslParameters = secure.sslParameters.apply { applicationProtocols = arrayOf("portline-ipv4-lease/1") }
+            params.applicationProtocols = arrayOf("portline-ipv4-lease/1")
         }
-        secure.startHandshake()
+        secure.sslParameters = params
+        try {
+            secure.startHandshake()
+        } catch (e: Exception) {
+            throw IllegalStateException(
+                "TLS 1.3-рукопожатие отклонено ${profile.host}:${profile.port}. Проверь, что на этом порту запущен Portline Gateway (${e.message})",
+                e
+            )
+        }
 
         val leaf = secure.session.peerCertificates[0] as X509Certificate
         val actual = MessageDigest.getInstance("SHA-256").digest(leaf.publicKey.encoded)
