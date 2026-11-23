@@ -35,12 +35,18 @@ fi
 if [[ "$NP_GW_ACTION" == use ]]; then
   [[ -x "$binary" ]] || { echo 'Не найден бинарник portline-gateway.' >&2; exit 1; }
   [[ "$activity" == active ]] || { echo 'Служба Gateway не активна. Проверь systemctl status portline-gateway.service.' >&2; exit 1; }
-  if [[ "$version" == 1.4.0 || "$version" == 1.2.0 ]]; then
+  before_sha="$(sha256sum "$config" | awk '{print $1}')"
+  if [[ "$version" == 1.4.9 || "$version" == 1.4.0 || "$version" == 1.2.0 ]]; then
     "$binary" -mode export -config "$config"
   else
     # Older Gateway implements init, which is idempotent for an existing
     # matching config. No configuration or identity is recreated.
     "$binary" -mode init -config "$config" -host "$host" -port "$port"
+  fi
+  after_sha="$(sha256sum "$config" | awk '{print $1}')"
+  if [[ "$before_sha" != "$after_sha" ]]; then
+    systemctl restart "$unit"
+    systemctl is-active --quiet "$unit"
   fi
   exit 0
 fi
@@ -69,11 +75,12 @@ __BINARY_BODY__
 PORTLINE_GATEWAY_UPDATE_BODY
 printf '%s  %s\n' "$NP_BIN_SHA" "$tmp" | sha256sum -c - >/dev/null
 chmod 755 "$tmp"
-[[ "$("$tmp" -mode version)" == 'PORTLINE_VERSION=1.4.0' ]] || { echo 'Неверная версия обновления Gateway.' >&2; exit 1; }
+[[ "$("$tmp" -mode version)" == 'PORTLINE_VERSION=1.4.9' ]] || { echo 'Неверная версия обновления Gateway.' >&2; exit 1; }
 "$tmp" -mode check -config "$config"
 mv -f -- "$tmp" "$binary"
+"$binary" -mode init -config "$config" -host "$host" -port "$port"
 systemctl restart "$unit"
 systemctl is-active --quiet "$unit"
 trap - ERR
-printf 'Gateway обновлён до 1.4.0. Резервная копия: %s\n' "$backup"
-printf 'PORTLINE_GATEWAY|installed|active|%s|1.4.0|%s|%s\n' "$port" "$schema" "$host"
+printf 'Gateway обновлён до 1.4.9. Резервная копия: %s\n' "$backup"
+printf 'PORTLINE_GATEWAY|installed|active|%s|1.4.9|%s|%s\n' "$port" "$schema" "$host"

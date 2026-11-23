@@ -38,7 +38,7 @@ import (
 	"portline/internal/ptunnel"
 )
 
-const gatewayVersion = "1.4.0"
+const gatewayVersion = "1.4.9"
 
 type Config struct {
 	Version     int    `json:"version"`
@@ -188,6 +188,9 @@ func exportProfile(path string) error {
 	leaf, err := x509.ParseCertificate(cert.Certificate[0])
 	if err != nil {
 		return err
+	}
+	if leaf.PublicKeyAlgorithm == x509.Ed25519 {
+		return provision(path, c.Host, c.Port)
 	}
 	profile := ptunnel.Profile{Version: 1, Host: c.Host, Port: c.Port, ServerKeyPin: ptunnel.PinCertificate(leaf), Token: c.Token}
 	encoded, err := ptunnel.EncodeProfile(profile)

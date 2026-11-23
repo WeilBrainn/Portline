@@ -563,7 +563,7 @@ class LocalApiServer(
                             .put("configVersion", parts[5])
                             .put("host", parts[6])
                             .put("compatible", parts[5] == "1")
-                            .put("needsUpdate", parts[5] == "1" && parts[4] != "1.4.0")
+                            .put("needsUpdate", parts[5] == "1" && parts[4] != "1.4.9")
                             .put("message", if (parts[2] == "active") "Gateway установлен и активен." else "Gateway найден, но служба остановлена.")
                     }
                 }

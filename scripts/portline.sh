@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ $(id -u) -ne 0 ]]; then echo 'Требуются права root на VPS.'; exit 1; fi
-# Never overwrite an existing gateway during a fresh-install request.
+# Never overwrite an existing gateway config during a fresh-install request.
 # Inspection/reuse/update are separate, user-confirmed operations.
-if [[ -e /etc/portline/gateway.json || -e /etc/systemd/system/portline-gateway.service ]]; then
+if [[ -e /etc/portline/gateway.json ]]; then
   echo 'Gateway already installed. В Portline выбери «Проверить Gateway», затем «Использовать существующий сервер» или обновление с резервной копией.' >&2
   exit 78
 fi

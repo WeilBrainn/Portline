@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const gatewayTargetVersion = "1.4.0"
+const gatewayTargetVersion = "1.4.9"
 
 type GatewayInspection struct {
 	State         string `json:"state"`
@@ -155,7 +155,7 @@ func (a *App) runGatewayAction(r InstallRequest, action string) {
 		return
 	}
 	a.status.GatewayAction = "success"
-	if action == "use" {
+	if action == "use" || (action == "update" && a.installProfileSeen) {
 		a.status.State = "success"
 		a.status.Protocol = "portline"
 		a.status.Host = a.tunnelProfile.Host

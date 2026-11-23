@@ -947,7 +947,15 @@ function renderGatewayState(status) {
         $('vpnPort').value = String(status.nativeProfilePort || $('vpnPort').value);
         updateSummary();setStep(4);showConnectionPanel();refreshTunnel();
         toast('Подключение к установленному Gateway готово.');
-      } else if (progress === 'success' && gatewayAction === 'update') toast('Gateway обновлён, резервная копия сохранена на VPS.');
+      } else if (progress === 'success' && gatewayAction === 'update') {
+        if (status.hasNativeProfile) {
+          lastStatus = status;selectedProtocol = 'portline';
+          $('host').value = status.nativeProfileHost || $('host').value;
+          $('vpnPort').value = String(status.nativeProfilePort || $('vpnPort').value);
+          updateSummary();refreshTunnel();
+        }
+        toast('Gateway обновлён, резервная копия сохранена на VPS.');
+      }
     }
 }
 async function runGatewayUI(action) {
