@@ -95,6 +95,7 @@ func (a *App) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			s.Tunnel.GuardMode = a.nativeSession.guardMode
 		}
 		a.mu.Unlock()
+		s.TunnelLogs = a.snapshotTunnelLogs()
 		_ = json.NewEncoder(w).Encode(s)
 	case "/api/install":
 		if r.Method != "POST" {
@@ -489,6 +490,13 @@ func (a *App) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"profile": profile})
+	case "/api/logs/clear":
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		a.clearTunnelLogs()
+		_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	case "/api/update":
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -498,6 +506,17 @@ func (a *App) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		a.lastAccess = time.Now()
 		a.mu.Unlock()
 		_ = json.NewEncoder(w).Encode(checkGitHubUpdate(r.Context()))
+	case "/api/update/install":
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := a.installSelfUpdate(r.Context()); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true, "restarting": true})
 	case "/api/quit":
 		if r.Method != "POST" {
 			http.Error(w, "Method not allowed", 405)

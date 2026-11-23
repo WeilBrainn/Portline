@@ -22,7 +22,7 @@ import android.widget.FrameLayout
 
 class MainActivity : Activity() {
     companion object {
-        private const val APP_VERSION = "1.4.2"
+        private const val APP_VERSION = "1.4.4"
         private const val REQ_VPN = 1
         private const val REQ_FILE = 2
         private const val REQ_NOTIFY = 3
@@ -62,6 +62,18 @@ class MainActivity : Activity() {
                     startService(Intent(this, PortlineVpnService::class.java).apply {
                         action = PortlineVpnService.DISCONNECT
                     })
+                }
+            },
+            onRequestInstallApk = {
+                runOnUiThread {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(ApkUpdateProvider.UPDATE_URI, "application/vnd.android.package-archive")
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(intent)
+                    } catch (_: Exception) {
+                    }
                 }
             },
             onRequestQuit = {

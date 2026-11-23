@@ -1322,27 +1322,78 @@ body.is-vpn-connected .telemetry-item { border-color: rgba(16, 185, 129, 0.25); 
   .app-credit { text-align: center; padding: 12px 16px 20px; }
 }
 
-.update-check-btn { min-height: 32px; padding: 0 11px; font-size: 11px; }
+.top-util-btn { min-height: 32px; padding: 0 11px; font-size: 11px; }
 .update-pill {
   display: inline-flex;
   align-items: center;
   padding: 5px 11px;
   border-radius: 999px;
   border: 1px solid rgba(56, 189, 248, 0.45);
-  background: rgba(56, 189, 248, 0.14);
+  background: rgba(56, 189, 248, 0.16);
   color: #bae6fd;
   font-size: 11px;
   font-weight: 600;
-  text-decoration: none;
+  cursor: pointer;
   transition: background 0.18s ease, transform 0.15s ease;
 }
-.update-pill:hover { background: rgba(56, 189, 248, 0.24); transform: translateY(-1px); }
+.update-pill:hover { background: rgba(56, 189, 248, 0.28); transform: translateY(-1px); }
+
+.modal-wide { width: min(100%, 640px); }
+.logs-section { margin-top: 14px; }
+.logs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.logs-head-actions { display: flex; gap: 6px; }
+.logs-head-actions .compact-btn { min-height: 28px; padding: 0 9px; font-size: 11px; }
+.logs-pre {
+  margin: 0;
+  padding: 12px;
+  max-height: 210px;
+  min-height: 110px;
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #060b14;
+  color: #cbd5e1;
+  font: 11px/1.6 var(--mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.logs-pre-sm { max-height: 140px; min-height: 76px; }
+
 .app-credit {
   padding: 14px 36px 22px;
   text-align: right;
   color: var(--subtle);
   font: 11px "Cascadia Code", Consolas, monospace;
   opacity: 0.78;
+}
+
+@media (max-width: 640px) {
+  .topbar { padding: 0 12px; min-height: 52px; gap: 8px; }
+  .crumb { font-size: 12px; max-width: 38vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top-right { gap: 6px; }
+  .top-util-btn { min-height: 30px; padding: 0 9px; font-size: 11px; }
+  .update-pill { padding: 4px 8px; font-size: 10px; }
+  .quit-btn { width: 30px; height: 30px; font-size: 15px; }
+  .sidebar { padding: 12px 12px 14px; }
+  .content { padding: 12px; }
+  .panel { padding: 16px; border-radius: 14px; }
+  .panel h1 { font-size: 24px; }
+  .saved-profiles, .import-banner, .form-card, .happ-setup, .gateway-tool, .port-tool, .install-card, .result-card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+  .connection-hero { padding: 14px; }
+  .action-row { flex-direction: column-reverse; align-items: stretch; gap: 10px; }
+  .action-row .primary-btn, .action-row .back-btn { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

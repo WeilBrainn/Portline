@@ -52,6 +52,21 @@ class PortlineVpnService : VpnService() {
         private val sentCounter = AtomicLong(0)
         private val recvCounter = AtomicLong(0)
         private val latencyValue = AtomicLong(-1)
+        private val logLock = Any()
+        private val tunnelLogs = ArrayDeque<String>(200)
+        private val timeFmt = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US)
+
+        fun log(msg: String) {
+            val line = "[${synchronized(timeFmt) { timeFmt.format(java.util.Date()) }}] $msg"
+            synchronized(logLock) {
+                if (tunnelLogs.size >= 200) tunnelLogs.removeFirst()
+                tunnelLogs.addLast(line)
+            }
+        }
+
+        fun logs(): List<String> = synchronized(logLock) { tunnelLogs.toList() }
+
+        fun clearLogs() = synchronized(logLock) { tunnelLogs.clear() }
 
         fun snapshot(): TunnelSnapshot = currentSnapshot.copy(
             sentPackets = sentCounter.get(),
@@ -159,10 +174,14 @@ class PortlineVpnService : VpnService() {
     private fun runWithReconnect(profile: PortlineProfile) {
         val backoffs = longArrayOf(1000L, 2000L, 4000L)
         var lastError: String? = null
+        var wasEstablished = false
         try {
+            log("Запуск подключения к ${profile.host}:${profile.port}")
             for (attempt in 0..backoffs.size) {
                 if (userStopped.get()) break
                 if (attempt > 0) {
+                    if (!wasEstablished) break
+                    log("Переподключение (попытка $attempt/${backoffs.size})…")
                     currentSnapshot = currentSnapshot.copy(
                         state = "connecting",
                         phase = "Переподключение ($attempt/${backoffs.size})…",
@@ -178,19 +197,22 @@ class PortlineVpnService : VpnService() {
                     active.set(true)
                 }
                 try {
-                    runTunnel(profile)
+                    val established = runTunnel(profile)
+                    if (established) wasEstablished = true
                     lastError = null
                     if (userStopped.get()) break
                 } catch (e: Exception) {
                     lastError = e.message ?: e.javaClass.simpleName
+                    log("Ошибка: $lastError")
                 } finally {
                     stopTunnel()
                 }
-                if (userStopped.get()) break
+                if (userStopped.get() || !wasEstablished) break
             }
         } finally {
             stopTunnel()
             if (userStopped.get()) {
+                log("Туннель остановлен пользователем.")
                 currentSnapshot = TunnelSnapshot(
                     state = "disconnected",
                     phase = "Отключено",
@@ -208,12 +230,15 @@ class PortlineVpnService : VpnService() {
         }
     }
 
-    private fun runTunnel(profile: PortlineProfile) {
+    private fun runTunnel(profile: PortlineProfile): Boolean {
+        var established = false
         check(prepare(this) == null) { "Нет разрешения Android на VPN — нажми «Подключить VPN»" }
         val upstream = Socket()
         tcp = upstream
+        log("1/5 Привязка сокета и защита от петли (protect)…")
         upstream.bind(InetSocketAddress(0))
         check(protect(upstream)) { "Не удалось исключить служебный сокет VPN из туннеля" }
+        log("2/5 TCP подключение к ${profile.host}:${profile.port}…")
         upstream.connect(InetSocketAddress(profile.host, profile.port), 15000)
         upstream.soTimeout = 20000
         upstream.tcpNoDelay = true
@@ -233,6 +258,7 @@ class PortlineVpnService : VpnService() {
             params.applicationProtocols = arrayOf("portline-ipv4-lease/1")
         }
         secure.sslParameters = params
+        log("3/5 TLS 1.3 рукопожатие…")
         try {
             secure.startHandshake()
         } catch (e: Exception) {
@@ -245,6 +271,7 @@ class PortlineVpnService : VpnService() {
         val leaf = secure.session.peerCertificates[0] as X509Certificate
         val actual = MessageDigest.getInstance("SHA-256").digest(leaf.publicKey.encoded)
         check(MessageDigest.isEqual(actual, profile.pin)) { "TLS-ключ сервера не совпал с профилем" }
+        log("4/5 Авторизация токена…")
 
         val netIn = DataInputStream(secure.inputStream)
         val netOut = DataOutputStream(secure.outputStream)
@@ -263,6 +290,7 @@ class PortlineVpnService : VpnService() {
             "10.76.24.2"
         }
         secure.soTimeout = 45000
+        log("5/5 Создание TUN-интерфейса (IP: $clientIP)…")
 
         val builder = Builder().setSession("Portline")
             .setMtu(1280)
@@ -278,6 +306,8 @@ class PortlineVpnService : VpnService() {
         }
         val tunnel = builder.establish() ?: error("Android отказался создавать VPN-интерфейс")
         vpn = tunnel
+        established = true
+        log("Туннель активен · $clientIP → ${profile.host}:${profile.port}")
 
         val tunIn = FileInputStream(tunnel.fileDescriptor)
         val tunOut = FileOutputStream(tunnel.fileDescriptor)
@@ -381,6 +411,7 @@ class PortlineVpnService : VpnService() {
             closeSockets()
             try { transmitter.join(500) } catch (_: Exception) {}
         }
+        return established
     }
 
     private fun closeSockets() {

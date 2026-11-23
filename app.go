@@ -83,6 +83,7 @@ type AppStatus struct {
 	PortTask          PortTask          `json:"portTask"`
 	PortConflict      bool              `json:"portConflict"`
 	NeedsFreshProfile bool              `json:"needsFreshProfile"`
+	TunnelLogs        []string          `json:"tunnelLogs"`
 }
 
 type App struct {
@@ -106,6 +107,34 @@ type App struct {
 	installProfileSeen bool
 	quitCh             chan struct{}
 	quitOnce           sync.Once
+	tunnelLogsMu       sync.Mutex
+	tunnelLogs         []string
+}
+
+func (a *App) appendTunnelLog(msg string) {
+	msg = strings.TrimSpace(msg)
+	if msg == "" {
+		return
+	}
+	line := "[" + time.Now().Format("15:04:05") + "] " + msg
+	a.tunnelLogsMu.Lock()
+	a.tunnelLogs = append(a.tunnelLogs, line)
+	if len(a.tunnelLogs) > 200 {
+		a.tunnelLogs = a.tunnelLogs[len(a.tunnelLogs)-200:]
+	}
+	a.tunnelLogsMu.Unlock()
+}
+
+func (a *App) clearTunnelLogs() {
+	a.tunnelLogsMu.Lock()
+	a.tunnelLogs = nil
+	a.tunnelLogsMu.Unlock()
+}
+
+func (a *App) snapshotTunnelLogs() []string {
+	a.tunnelLogsMu.Lock()
+	defer a.tunnelLogsMu.Unlock()
+	return append([]string(nil), a.tunnelLogs...)
 }
 
 var errExistingInstanceNotified = errors.New("existing instance notified")

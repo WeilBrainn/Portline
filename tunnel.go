@@ -111,8 +111,12 @@ func (a *App) runTunnelTask(action string) {
 			printlnPanic("runTunnelTask", r)
 		}
 	}()
-	update := func(s string) { a.modify(func(v *AppStatus) { v.Tunnel.Phase = s }) }
+	update := func(s string) {
+		a.appendTunnelLog(s)
+		a.modify(func(v *AppStatus) { v.Tunnel.Phase = s })
+	}
 	if action == "disconnect" {
+		a.appendTunnelLog("Отключение туннеля…")
 		a.mu.Lock()
 		a.wantConnected = false
 		old := a.nativeSession
@@ -129,10 +133,13 @@ func (a *App) runTunnelTask(action string) {
 		a.modify(func(v *AppStatus) {
 			switch {
 			case cleanupErr != nil:
+				a.appendTunnelLog("Ошибка восстановления сети: " + cleanupErr.Error())
 				v.Tunnel = TunnelTask{State: "error", Message: "Не удалось восстановить сеть: " + cleanupErr.Error()}
 			case old == nil:
+				a.appendTunnelLog("Активного соединения нет; маршруты проверены.")
 				v.Tunnel = TunnelTask{State: "disconnected", Message: "Активного соединения нет; незавершённые изменения проверены."}
 			default:
+				a.appendTunnelLog("Туннель отключён, сеть восстановлена.")
 				v.Tunnel = TunnelTask{State: "disconnected", Message: "Соединение отключено; сетевые маршруты восстановлены."}
 			}
 		})
@@ -156,10 +163,12 @@ func (a *App) connectAndSupervise(profile ptunnel.Profile, update func(string)) 
 	a.tunnelBusy = false
 	if err != nil {
 		a.wantConnected = false
+		msg := explainTunnelError(profile, err)
+		a.appendTunnelLog("Ошибка подключения: " + msg)
 		if errors.Is(err, errFirewallDisabled) {
 			a.status.Tunnel = TunnelTask{State: "error", NeedsFirewall: true, Message: "Брандмауэр Windows выключен. Защита от утечек DNS, IPv6 и обхода через роутер работает через его правила, поэтому без него Portline не подключается. Сетевые настройки не изменялись. Включи брандмауэр кнопкой ниже — после отключения VPN он останется включённым."}
 		} else {
-			a.status.Tunnel = TunnelTask{State: "error", Message: explainTunnelError(profile, err)}
+			a.status.Tunnel = TunnelTask{State: "error", Message: msg}
 		}
 		a.mu.Unlock()
 		return
@@ -172,6 +181,7 @@ func (a *App) connectAndSupervise(profile ptunnel.Profile, update func(string)) 
 	a.nativeSession = session
 	a.tunnelConnectedAt = time.Now().Format(time.RFC3339)
 	a.status.Tunnel = connectedTask(session.guardMode, false)
+	a.appendTunnelLog("Туннель подключён (режим защиты: " + session.guardMode + ")")
 	a.mu.Unlock()
 	go a.watchSession(session, profile, update)
 }

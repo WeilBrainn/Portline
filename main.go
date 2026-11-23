@@ -19,7 +19,7 @@ import (
 //go:embed ui/* scripts/* bin/*
 var assets embed.FS
 
-const version = "1.4.2"
+const version = "1.4.4"
 
 func openUI(url string) {
 	if os.Getenv("PORTLINE_NO_BROWSER") == "1" {
@@ -69,6 +69,9 @@ func main() {
 		return
 	}
 	defer release()
+	if exe, err := os.Executable(); err == nil {
+		_ = os.Remove(exe + ".old")
+	}
 	if dir, err := appDir(); err == nil {
 		if f, err := os.OpenFile(filepath.Join(dir, "portline-runtime.log"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600); err == nil {
 			redirectStderr(f)

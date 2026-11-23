@@ -662,26 +662,29 @@ catch (e) {
     toast(e.message);
 } });
 
+let lastUpdateInfo = null;
 async function checkForUpdates(silent = false) {
     const btn = $('checkUpdateBtn');
     if (btn && !silent) {
         btn.disabled = true;
-        btn.textContent = 'Проверка…';
+        btn.textContent = '…';
     }
     try {
         const info = await api('/api/update');
+        lastUpdateInfo = info;
         if (info.error) {
             if (!silent) toast(info.error);
             return;
         }
-        if (info.hasUpdate && info.releaseUrl) {
+        if (info.hasUpdate) {
             const badge = $('updateBadge');
             if (badge) {
-                badge.href = info.releaseUrl;
-                badge.textContent = `Обновление v${info.latestVersion} ↗`;
+                badge.textContent = info.canSelfUpdate
+                    ? `Обновить до v${info.latestVersion}`
+                    : `v${info.latestVersion} ↗`;
                 badge.hidden = false;
             }
-            if (!silent) toast(`Доступна новая версия v${info.latestVersion}`);
+            if (!silent) toast(`Доступна новая версия v${info.latestVersion}. Нажми «Обновить до v${info.latestVersion}».`);
         } else if (!silent) {
             toast(`У тебя актуальная версия (v${info.currentVersion}).`);
         }
@@ -694,9 +697,95 @@ async function checkForUpdates(silent = false) {
         }
     }
 }
+if ($('updateBadge')) {
+    $('updateBadge').addEventListener('click', async () => {
+        if (!lastUpdateInfo?.hasUpdate) return;
+        if (!lastUpdateInfo.canSelfUpdate) {
+            if (lastUpdateInfo.releaseUrl) window.open(lastUpdateInfo.releaseUrl, '_blank', 'noopener,noreferrer');
+            return;
+        }
+        const badge = $('updateBadge');
+        badge.disabled = true;
+        const orig = badge.textContent;
+        badge.textContent = 'Обновляем…';
+        toast('Скачиваем обновление…');
+        try {
+            await api('/api/update/install', { method: 'POST' });
+            toast('Обновление загружено. Перезапуск / установка…');
+        } catch (e) {
+            toast(e.message);
+            badge.disabled = false;
+            badge.textContent = orig;
+        }
+    });
+}
 if ($('checkUpdateBtn')) {
     $('checkUpdateBtn').addEventListener('click', () => checkForUpdates(false));
     setTimeout(() => checkForUpdates(true), 2500);
+}
+
+let logsPollTimer = null;
+function renderLogsModal(status) {
+    if (!status) return;
+    const tLogs = status.tunnelLogs || [];
+    const sLogs = status.logs || [];
+    if ($('tunnelLogsView')) {
+        const el = $('tunnelLogsView');
+        const txt = tLogs.length ? tLogs.join('\n') : '> События туннеля появятся при подключении…';
+        if (el.textContent !== txt) {
+            el.textContent = txt;
+            el.scrollTop = el.scrollHeight;
+        }
+    }
+    if ($('sshLogsView')) {
+        const el = $('sshLogsView');
+        const txt = sLogs.length ? sLogs.map(x => '> ' + x).join('\n') : '> Журнал SSH пуст.';
+        if (el.textContent !== txt) {
+            el.textContent = txt;
+            el.scrollTop = el.scrollHeight;
+        }
+    }
+}
+async function pollLogsModal() {
+    try {
+        const status = await api('/api/status');
+        lastStatus = status;
+        renderLogsModal(status);
+    } catch (_) {}
+}
+if ($('logsBtn')) {
+    $('logsBtn').addEventListener('click', () => {
+        openDialog('logsModal', 'closeLogsModal');
+        pollLogsModal();
+        if (logsPollTimer) clearInterval(logsPollTimer);
+        logsPollTimer = setInterval(pollLogsModal, 1000);
+    });
+}
+function closeLogsModalFn() {
+    if (logsPollTimer) { clearInterval(logsPollTimer); logsPollTimer = null; }
+    closeDialog('logsModal');
+}
+if ($('closeLogsModal')) $('closeLogsModal').addEventListener('click', closeLogsModalFn);
+if ($('logsModal')) $('logsModal').addEventListener('click', e => { if (e.target === $('logsModal')) closeLogsModalFn(); });
+if ($('clearTunnelLogsBtn')) {
+    $('clearTunnelLogsBtn').addEventListener('click', async () => {
+        try {
+            await api('/api/logs/clear', { method: 'POST' });
+            if ($('tunnelLogsView')) $('tunnelLogsView').textContent = '> Логи очищены.';
+            toast('Журнал туннеля очищен.');
+        } catch (e) { toast(e.message); }
+    });
+}
+if ($('copyTunnelLogsBtn')) {
+    $('copyTunnelLogsBtn').addEventListener('click', async () => {
+        const txt = $('tunnelLogsView')?.textContent || '';
+        try {
+            await navigator.clipboard.writeText(txt);
+            toast('Логи скопированы.');
+        } catch (_) {
+            toast('Не удалось скопировать логи.');
+        }
+    });
 }
 function resetPortResult() {
     lastPortResult = null;

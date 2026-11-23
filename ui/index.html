@@ -142,8 +142,9 @@
       </strong>
      </div>
      <div class="top-right">
-      <a class="update-pill" id="updateBadge" href="https://github.com/WeilBrainn/Portline/releases" target="_blank" rel="noopener noreferrer" hidden>Обновление ↗</a>
-      <button class="secondary-btn compact-btn update-check-btn" id="checkUpdateBtn" type="button" title="Проверить обновления на GitHub">Обновления</button>
+      <button class="update-pill" id="updateBadge" type="button" hidden>Обновить ↗</button>
+      <button class="secondary-btn compact-btn top-util-btn" id="logsBtn" type="button" title="Журнал туннеля и SSH">Логи</button>
+      <button class="secondary-btn compact-btn top-util-btn" id="checkUpdateBtn" type="button" title="Проверить обновления на GitHub">Обновления</button>
       <span class="top-indicator" id="topIndicator">
        <span class="indicator-pulse">
        </span>
@@ -830,6 +831,31 @@
      <button class="primary-btn" id="confirmStopPort" type="button">
       Остановить службу
      </button>
+    </div>
+   </div>
+  </div>
+  <div class="modal-backdrop" hidden="" id="logsModal" role="presentation">
+   <div aria-labelledby="logsModalTitle" aria-modal="true" class="modal modal-wide" role="dialog">
+    <div class="modal-kicker">ДИАГНОСТИКА</div>
+    <h2 id="logsModalTitle">Журнал работы</h2>
+    <div class="logs-section">
+     <div class="logs-head">
+      <span>Туннель (VPN)</span>
+      <div class="logs-head-actions">
+       <button class="secondary-btn compact-btn" id="copyTunnelLogsBtn" type="button">Копировать</button>
+       <button class="secondary-btn compact-btn" id="clearTunnelLogsBtn" type="button">Очистить</button>
+      </div>
+     </div>
+     <pre class="logs-pre" id="tunnelLogsView">&gt; События туннеля появятся при подключении…</pre>
+    </div>
+    <div class="logs-section">
+     <div class="logs-head">
+      <span>SSH / Установка</span>
+     </div>
+     <pre class="logs-pre logs-pre-sm" id="sshLogsView">&gt; Журнал SSH пуст.</pre>
+    </div>
+    <div class="modal-actions">
+     <button class="primary-btn" id="closeLogsModal" type="button">Закрыть</button>
     </div>
    </div>
   </div>

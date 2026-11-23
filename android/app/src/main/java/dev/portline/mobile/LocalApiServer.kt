@@ -29,6 +29,7 @@ class LocalApiServer(
     private val appVersion: String,
     private val onRequestConnectVpn: (String) -> Unit,
     private val onRequestDisconnectVpn: () -> Unit,
+    private val onRequestInstallApk: () -> Unit,
     private val onRequestQuit: () -> Unit
 ) {
     private val token: String = ByteArray(24).let {
@@ -332,7 +333,21 @@ class LocalApiServer(
                 }
                 sendJson(out, 200, JSONObject().put("profile", copy))
             }
+            "/api/logs/clear" -> {
+                if (method != "POST") return sendJson(out, 405, JSONObject().put("error", "Method not allowed"))
+                PortlineVpnService.clearLogs()
+                sendJson(out, 200, JSONObject().put("ok", true))
+            }
             "/api/update" -> sendJson(out, 200, checkGitHubUpdate())
+            "/api/update/install" -> {
+                if (method != "POST") return sendJson(out, 405, JSONObject().put("error", "Method not allowed"))
+                val err = downloadAndInstallAndroidUpdate()
+                if (err != null) {
+                    sendJson(out, 400, JSONObject().put("error", err))
+                } else {
+                    sendJson(out, 200, JSONObject().put("ok", true))
+                }
+            }
             "/api/quit" -> {
                 sendJson(out, 200, JSONObject().put("ok", true))
                 executor.execute {
@@ -664,12 +679,67 @@ class LocalApiServer(
                 val json = JSONObject(conn.inputStream.bufferedReader().use { it.readText() })
                 val latest = json.optString("tag_name").removePrefix("v")
                 val url = json.optString("html_url", "https://github.com/WeilBrainn/Portline/releases")
-                res.put("latestVersion", latest).put("hasUpdate", isNewer(appVersion, latest)).put("releaseUrl", url)
+                var dlUrl = ""
+                val assets = json.optJSONArray("assets")
+                if (assets != null) {
+                    for (i in 0 until assets.length()) {
+                        val a = assets.getJSONObject(i)
+                        if (a.optString("name") == "Portline-android.apk") {
+                            dlUrl = a.optString("browser_download_url")
+                            break
+                        }
+                    }
+                }
+                res.put("latestVersion", latest)
+                    .put("hasUpdate", isNewer(appVersion, latest))
+                    .put("releaseUrl", url)
+                    .put("downloadUrl", dlUrl)
+                    .put("canSelfUpdate", dlUrl.startsWith("https://"))
             } else {
                 res.put("latestVersion", appVersion).put("hasUpdate", false)
             }
         } catch (_: Exception) {
             res.put("error", "Не удалось связаться с GitHub.")
+        }
+    }
+
+    private fun downloadAndInstallAndroidUpdate(): String? {
+        return try {
+            val info = checkGitHubUpdate()
+            val err = info.optString("error")
+            if (err.isNotEmpty()) return err
+            val dlUrl = info.optString("downloadUrl")
+            if (!info.optBoolean("hasUpdate") || dlUrl.isBlank()) {
+                return "Обновление недоступно или APK отсутствует в релизе."
+            }
+            if (!dlUrl.startsWith("https://github.com/WeilBrainn/Portline/") &&
+                !dlUrl.startsWith("https://objects.githubusercontent.com/")
+            ) {
+                return "Недоверенный адрес загрузки."
+            }
+            val conn = (URL(dlUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 15000
+                readTimeout = 60000
+                instanceFollowRedirects = true
+                setRequestProperty("User-Agent", "Portline-Android/$appVersion")
+            }
+            if (conn.responseCode != 200) {
+                return "Ошибка загрузки APK (HTTP ${conn.responseCode})."
+            }
+            val dst = ApkUpdateProvider.apkFile(context)
+            conn.inputStream.use { inp ->
+                dst.outputStream().use { out ->
+                    inp.copyTo(out)
+                }
+            }
+            if (dst.length() < 100_000) {
+                dst.delete()
+                return "Скачанный APK повреждён."
+            }
+            onRequestInstallApk()
+            null
+        } catch (e: Exception) {
+            e.message ?: "Ошибка обновления"
         }
     }
 
@@ -720,6 +790,7 @@ class LocalApiServer(
                 put("gateway", gatewayInfo)
                 put("portTask", portTask)
                 put("tunnel", tunnelJson)
+                put("tunnelLogs", JSONArray(PortlineVpnService.logs()))
                 put("happ", JSONObject().put("state", "idle"))
             }
         }
