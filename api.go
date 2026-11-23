@@ -489,6 +489,15 @@ func (a *App) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"profile": profile})
+	case "/api/update":
+		if r.Method != http.MethodGet {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		a.mu.Lock()
+		a.lastAccess = time.Now()
+		a.mu.Unlock()
+		_ = json.NewEncoder(w).Encode(checkGitHubUpdate(r.Context()))
 	case "/api/quit":
 		if r.Method != "POST" {
 			http.Error(w, "Method not allowed", 405)

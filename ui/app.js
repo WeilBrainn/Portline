@@ -661,6 +661,43 @@ $('quitBtn').addEventListener('click', async () => { try {
 catch (e) {
     toast(e.message);
 } });
+
+async function checkForUpdates(silent = false) {
+    const btn = $('checkUpdateBtn');
+    if (btn && !silent) {
+        btn.disabled = true;
+        btn.textContent = 'Проверка…';
+    }
+    try {
+        const info = await api('/api/update');
+        if (info.error) {
+            if (!silent) toast(info.error);
+            return;
+        }
+        if (info.hasUpdate && info.releaseUrl) {
+            const badge = $('updateBadge');
+            if (badge) {
+                badge.href = info.releaseUrl;
+                badge.textContent = `Обновление v${info.latestVersion} ↗`;
+                badge.hidden = false;
+            }
+            if (!silent) toast(`Доступна новая версия v${info.latestVersion}`);
+        } else if (!silent) {
+            toast(`У тебя актуальная версия (v${info.currentVersion}).`);
+        }
+    } catch (e) {
+        if (!silent) toast('Не удалось проверить обновления: ' + e.message);
+    } finally {
+        if (btn && !silent) {
+            btn.disabled = false;
+            btn.textContent = 'Обновления';
+        }
+    }
+}
+if ($('checkUpdateBtn')) {
+    $('checkUpdateBtn').addEventListener('click', () => checkForUpdates(false));
+    setTimeout(() => checkForUpdates(true), 2500);
+}
 function resetPortResult() {
     lastPortResult = null;
     if ($('portResponse'))

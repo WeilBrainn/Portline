@@ -1,0 +1,83 @@
+name: Release All Platforms
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.4.0)'
+        required: true
+        default: 'v1.4.0'
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - run: pwsh -File ./build.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: |
+            Portline.exe
+            bin/portline-gateway-linux-amd64
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Build Debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+      - run: cp android/app/build/outputs/apk/debug/app-debug.apk Portline-android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-android
+          path: Portline-android.apk
+
+  release:
+    needs: [windows, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Flatten release files
+        run: |
+          mkdir -p dist
+          cp artifacts/release-windows/Portline.exe dist/Portline.exe
+          cp artifacts/release-windows/bin/portline-gateway-linux-amd64 dist/portline-gateway-linux-amd64
+          cp artifacts/release-android/Portline-android.apk dist/Portline-android.apk
+      - name: Determine release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: Portline ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          files: |
+            dist/Portline.exe
+            dist/portline-gateway-linux-amd64
+            dist/Portline-android.apk
