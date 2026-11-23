@@ -197,8 +197,9 @@ class PortlineVpnService : VpnService() {
                     active.set(true)
                 }
                 try {
-                    val established = runTunnel(profile)
-                    if (established) wasEstablished = true
+                    runTunnel(profile) {
+                        wasEstablished = true
+                    }
                     lastError = null
                     if (userStopped.get()) break
                 } catch (e: Exception) {
@@ -246,6 +247,7 @@ class PortlineVpnService : VpnService() {
         upstream.connect(InetSocketAddress(profile.host, profile.port), 15000)
         upstream.soTimeout = 20000
         upstream.tcpNoDelay = true
+        upstream.keepAlive = true
 
         val trust = object : X509TrustManager {
             override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
@@ -291,7 +293,7 @@ class PortlineVpnService : VpnService() {
         return org.bouncycastle.asn1.x509.Certificate.getInstance(der).subjectPublicKeyInfo.encoded
     }
 
-    private fun runTunnel(profile: PortlineProfile): Boolean {
+    private fun runTunnel(profile: PortlineProfile, onEstablished: () -> Unit): Boolean {
         var established = false
         check(prepare(this) == null) { "Нет разрешения Android на VPN — нажми «Подключить VPN»" }
         val (secure, alpn) = try {
@@ -349,8 +351,10 @@ class PortlineVpnService : VpnService() {
         val tunnel = builder.establish() ?: error("Android отказался создавать VPN-интерфейс")
         vpn = tunnel
         established = true
+        onEstablished()
         log("Туннель активен · $clientIP → ${profile.host}:${profile.port}")
 
+        val clientIpBytes = InetAddress.getByName(clientIP).address
         val tunIn = FileInputStream(tunnel.fileDescriptor)
         val tunOut = FileOutputStream(tunnel.fileDescriptor)
         val writeLock = Any()
@@ -399,6 +403,14 @@ class PortlineVpnService : VpnService() {
                         continue
                     }
                     if (n < 20 || version != 4) continue
+                    // Drop packets whose source IP doesn't match the leased tunnel IP (e.g. lingering
+                    // pre-VPN Wi-Fi/LTE sockets) or multicast/broadcast noise, otherwise the gateway
+                    // treats the mismatched source IP as spoofing and closes the TLS stream (EOFException).
+                    if (buf[12] != clientIpBytes[0] || buf[13] != clientIpBytes[1] || buf[14] != clientIpBytes[2] || buf[15] != clientIpBytes[3]) {
+                        continue
+                    }
+                    val dstFirst = buf[16].toInt() and 0xFF
+                    if ((dstFirst and 0xF0) == 0xE0 || dstFirst == 255) continue
                     writeFrame(buf, n)
                     sentCounter.incrementAndGet()
                 }

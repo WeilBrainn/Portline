@@ -19,7 +19,7 @@ import (
 //go:embed ui/* scripts/* bin/*
 var assets embed.FS
 
-const version = "1.4.11"
+const version = "1.4.12"
 
 func openUI(url string) {
 	if os.Getenv("PORTLINE_NO_BROWSER") == "1" {
