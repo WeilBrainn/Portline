@@ -1,17 +1,16 @@
-# Run from the project directory: powershell -ExecutionPolicy Bypass -File .\build.ps1
+# Build and test Portline from source. Run from Windows PowerShell.
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
-if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
-  Write-Host 'Go is not installed. Download Go from https://go.dev/dl/' -ForegroundColor Red
-  exit 1
-}
-$env:CGO_ENABLED = '0'
-$env:GOOS = 'windows'
-$env:GOARCH = 'amd64'
-Write-Host 'Running automated tests...'
+if (-not (Get-Command go -ErrorAction SilentlyContinue)) { throw 'Go 1.21+ is required: https://go.dev/dl/' }
 & go test ./...
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-Write-Host 'Building Portline.exe...'
+New-Item -ItemType Directory -Force -Path bin | Out-Null
+$env:CGO_ENABLED = '0'
+$env:GOOS = 'linux'
+$env:GOARCH = 'amd64'
+& go build -trimpath -ldflags='-s -w' -o 'bin/portline-gateway-linux-amd64' ./cmd/portline-gateway
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$env:GOOS = 'windows'
 & go build -trimpath -ldflags='-H windowsgui -s -w' -o Portline.exe .
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-Write-Host "Done: $PSScriptRoot\Portline.exe" -ForegroundColor Green
+Write-Host 'Built Portline.exe and bin/portline-gateway-linux-amd64'

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -11,13 +12,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"time"
 )
 
-//go:embed ui/* scripts/*
+//go:embed ui/* scripts/* bin/*
 var assets embed.FS
 
-const version = "0.6.0"
+const version = "1.4.0-preview"
 
 func openUI(url string) {
 	if os.Getenv("PORTLINE_NO_BROWSER") == "1" {
@@ -58,7 +60,48 @@ func main() {
 		fmt.Println(v)
 		return
 	}
-	app := &App{token: randomHex(24), lastAccess: time.Now(), status: AppStatus{State: "idle", Phase: "Ожидание", Progress: 0, Logs: []string{}, HAPP: HAPPTask{State: "idle"}}}
+	release, err := acquireAppInstance()
+	if err != nil {
+		if errors.Is(err, errExistingInstanceNotified) {
+			return
+		}
+		notifyStartupFailure(err.Error())
+		return
+	}
+	defer release()
+	if dir, err := appDir(); err == nil {
+		if f, err := os.OpenFile(filepath.Join(dir, "portline-runtime.log"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600); err == nil {
+			redirectStderr(f)
+			log.SetOutput(f)
+			defer f.Close()
+		}
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("PANIC: %v\n%s", r, debug.Stack())
+		}
+	}()
+	app := &App{token: randomHex(24), lastAccess: time.Now(), quitCh: make(chan struct{}), status: AppStatus{State: "idle", Phase: "Ожидание", Progress: 0, Logs: []string{}, HAPP: HAPPTask{State: "idle"}}}
+	if servers, err := loadSavedServers(); err == nil {
+		app.savedServers = servers
+	}
+	if profile, ok := restoreTunnelProfile(); ok {
+		app.status.State = "success"
+		app.status.Phase = "Сохранённый профиль"
+		app.status.Progress = 100
+		app.status.Protocol = "portline"
+		app.status.Host = profile.Host
+		app.status.HasNativeProfile = true
+		app.status.NativeProfileHost = profile.Host
+		app.status.NativeProfilePort = profile.Port
+		app.tunnelProfile = profile
+		app.status.Tunnel = TunnelTask{State: "idle", Message: "Сохранённый профиль готов к подключению."}
+	}
+	if err := recoverStartupRoutes(); err != nil {
+		app.status.Tunnel = TunnelTask{State: "error", Message: "Не удалось восстановить сеть после предыдущего подключения. Запусти Portline от имени администратора: " + err.Error()}
+	} else if app.status.HasNativeProfile {
+		app.status.Tunnel = TunnelTask{State: "idle", Message: "Сеть проверена. Профиль готов к подключению."}
+	}
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		log.Fatal(err)
@@ -68,20 +111,13 @@ func main() {
 	port := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
 	fmt.Printf("Portline %s · %s\n", version, url)
+	stopTray := startTray(url, app, app.requestQuit)
+	defer stopTray()
 	openUI(url)
-	// Exit when the GUI has been inactive for an extended period, but not during remote work.
-	ticker := time.NewTicker(12 * time.Second)
-	defer ticker.Stop()
-	for range ticker.C {
-		app.mu.Lock()
-		idle := time.Since(app.lastAccess) > 90*time.Second
-		busy := app.busy || app.happBusy || app.portBusy
-		app.mu.Unlock()
-		if idle && !busy {
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-			_ = server.Shutdown(ctx)
-			cancel()
-			return
-		}
-	}
+	<-app.quitCh
+	stopTray()
+	app.shutdownTunnel()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	_ = server.Shutdown(ctx)
+	cancel()
 }

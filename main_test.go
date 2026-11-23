@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"portline/internal/ptunnel"
 	"runtime"
 	"strings"
 	"testing"
@@ -91,7 +92,7 @@ func TestInstallWithMockSSH(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(dir, "config"))
+	setTestConfigDir(t, filepath.Join(dir, "config"))
 	a := &App{token: "hi", status: AppStatus{State: "running"}}
 	a.install(requestOK())
 	if a.status.State != "success" {
@@ -156,5 +157,98 @@ func TestQuitDoesNotInterruptHAPP(t *testing.T) {
 	a.serveHTTP(w, req)
 	if w.Code != 409 {
 		t.Fatalf("expected 409, got %d", w.Code)
+	}
+}
+
+// A browser using DNS rebinding must not be able to read the API bearer token
+// from the root HTML page, even when the listener is bound to 127.0.0.1.
+func TestRejectNonLocalHostHeader(t *testing.T) {
+	a := &App{token: "very-private-token", lastAccess: time.Now()}
+	for _, host := range []string{"portline.attacker.example", "portline.attacker.example:4242", "127.0.0.1.attacker.example:4242", "[::1]:4242"} {
+		t.Run(host, func(t *testing.T) {
+			r := httptest.NewRequest("GET", "http://127.0.0.1:4242/", nil)
+			r.Host = host
+			w := httptest.NewRecorder()
+			a.serveHTTP(w, r)
+			if w.Code != 403 {
+				t.Fatalf("host %q returned HTTP %d", host, w.Code)
+			}
+			if strings.Contains(w.Body.String(), a.token) {
+				t.Fatalf("bearer token disclosed to host %q", host)
+			}
+		})
+	}
+	for _, host := range []string{"127.0.0.1:4242", "localhost:4242"} {
+		r := httptest.NewRequest("GET", "http://127.0.0.1:4242/", nil)
+		r.Host = host
+		w := httptest.NewRecorder()
+		a.serveHTTP(w, r)
+		if w.Code != 200 || !strings.Contains(w.Body.String(), a.token) {
+			t.Fatalf("expected local UI for %s, status %d", host, w.Code)
+		}
+	}
+}
+
+func TestConnectingTwiceCannotReplaceActiveTunnel(t *testing.T) {
+	a := &App{
+		token: "test", lastAccess: time.Now(),
+		status:        AppStatus{State: "success", HasNativeProfile: true},
+		nativeSession: &nativeSession{done: make(chan struct{})},
+	}
+	req := httptest.NewRequest("POST", "http://127.0.0.1:4242/api/tunnel/connect", nil)
+	req.Header.Set("Authorization", "Bearer test")
+	w := httptest.NewRecorder()
+	a.serveHTTP(w, req)
+	if w.Code != 409 {
+		t.Fatalf("expected conflict for active tunnel, got %d", w.Code)
+	}
+	if a.tunnelBusy {
+		t.Fatal("existing connection replaced")
+	}
+}
+
+func TestPortlineInstallRequiresFreshProfile(t *testing.T) {
+	if os.PathSeparator == '\\' {
+		t.Skip("mock shell requires Unix")
+	}
+	dir := t.TempDir()
+	p := filepath.Join(dir, "ssh.exe")
+	script := "#!/bin/sh\nprintf '::phase|65|Конфигурация\n'\nprintf 'Service is active\n'\n"
+	if err := os.WriteFile(p, []byte(script), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	setTestConfigDir(t, filepath.Join(dir, "config"))
+	a := &App{token: "hi", status: AppStatus{State: "running", HasNativeProfile: true, NativeProfileHost: "203.0.113.14", NativeProfilePort: 443}, tunnelProfile: ptunnel.Profile{Version: 1, Host: "203.0.113.14", Port: 443, ServerKeyPin: strings.Repeat("A", 43), Token: strings.Repeat("A", 43)}}
+	r := requestOK()
+	r.Protocol = "portline"
+	r.Port = 8449
+	a.install(r)
+	if a.status.State != "error" {
+		t.Fatalf("expected error, got %+v", a.status)
+	}
+	if !strings.Contains(a.status.Error, "не вернул новый профиль") {
+		t.Fatalf("unexpected error: %s", a.status.Error)
+	}
+}
+
+func TestProfilesAPI(t *testing.T) {
+	dir := t.TempDir()
+	setTestConfigDir(t, dir)
+	a := &App{token: "abc123", lastAccess: time.Now(), status: AppStatus{State: "idle"}}
+	body := bytes.NewBufferString(`{"name":"test","host":"203.0.113.10","sshPort":22,"username":"root","auth":"password","protocol":"portline","port":8443}`)
+	r := httptest.NewRequest("POST", "http://localhost/api/profiles", body)
+	r.Header.Set("Authorization", "Bearer abc123")
+	w := httptest.NewRecorder()
+	a.serveHTTP(w, r)
+	if w.Code != 200 {
+		t.Fatalf("save profile got %d: %s", w.Code, w.Body.String())
+	}
+	r = httptest.NewRequest("GET", "http://localhost/api/profiles", nil)
+	r.Header.Set("Authorization", "Bearer abc123")
+	w = httptest.NewRecorder()
+	a.serveHTTP(w, r)
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "203.0.113.10") {
+		t.Fatalf("list profiles failed: %d %s", w.Code, w.Body.String())
 	}
 }

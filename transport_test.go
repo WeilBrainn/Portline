@@ -48,7 +48,7 @@ func TestPlinkFallbackMockIntegration(t *testing.T) {
 		t.Skip("Unix mock script")
 	}
 	temp := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(temp, "config"))
+	setTestConfigDir(t, filepath.Join(temp, "config"))
 	fake := filepath.Join(temp, "plink")
 	script := "#!/bin/sh\n" +
 		"case \"$1\" in -v) echo 'Host key fingerprint: ssh-ed25519 255 " + mockFingerprint + "' >&2; exit 1;; esac\n" +

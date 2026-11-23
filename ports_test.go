@@ -92,7 +92,7 @@ fi
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(dir, "config"))
+	setTestConfigDir(t, filepath.Join(dir, "config"))
 	a := &App{token: "test", status: AppStatus{State: "idle", Logs: []string{}}}
 	send := func(endpoint string, body any) int {
 		b, _ := json.Marshal(body)

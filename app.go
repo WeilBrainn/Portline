@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"portline/internal/ptunnel"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,15 +15,16 @@ import (
 )
 
 type InstallRequest struct {
-	Host     string `json:"host"`
-	SSHPort  int    `json:"sshPort"`
-	Username string `json:"username"`
-	Password string `json:"password"`
-	KeyFile  string `json:"keyFile"`
-	Auth     string `json:"auth"`
-	Protocol string `json:"protocol"`
-	Port     int    `json:"port"`
-	SNI      string `json:"sni"`
+	ConfirmUpdate bool   `json:"confirmUpdate,omitempty"`
+	Host          string `json:"host"`
+	SSHPort       int    `json:"sshPort"`
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	KeyFile       string `json:"keyFile"`
+	Auth          string `json:"auth"`
+	Protocol      string `json:"protocol"`
+	Port          int    `json:"port"`
+	SNI           string `json:"sni"`
 }
 
 type PortTask struct {
@@ -42,6 +44,18 @@ type PortStopRequest struct {
 	Service string `json:"service"`
 }
 
+type TunnelTask struct {
+	State           string `json:"state"`
+	Phase           string `json:"phase"`
+	Message         string `json:"message"`
+	SentPackets     uint64 `json:"sentPackets,omitempty"`
+	ReceivedPackets uint64 `json:"receivedPackets,omitempty"`
+	LatencyMs       int64  `json:"latencyMs,omitempty"`
+	ConnectedAt     string `json:"connectedAt,omitempty"`
+	NeedsFirewall   bool   `json:"needsFirewall,omitempty"`
+	GuardMode       string `json:"guardMode,omitempty"`
+}
+
 type HAPPTask struct {
 	State   string `json:"state"`
 	Phase   string `json:"phase"`
@@ -49,30 +63,59 @@ type HAPPTask struct {
 }
 
 type AppStatus struct {
-	State        string   `json:"state"`
-	Phase        string   `json:"phase"`
-	Progress     int      `json:"progress"`
-	Logs         []string `json:"logs"`
-	Link         string   `json:"link"`
-	Error        string   `json:"error"`
-	Protocol     string   `json:"protocol"`
-	Host         string   `json:"host"`
-	Started      string   `json:"started"`
-	HAPP         HAPPTask `json:"happ"`
-	PortTask     PortTask `json:"portTask"`
-	PortConflict bool     `json:"portConflict"`
+	Gateway           GatewayInspection `json:"gateway"`
+	GatewayAction     string            `json:"gatewayAction"`
+	GatewayError      string            `json:"gatewayError"`
+	State             string            `json:"state"`
+	Phase             string            `json:"phase"`
+	Progress          int               `json:"progress"`
+	Logs              []string          `json:"logs"`
+	Link              string            `json:"link"`
+	HasNativeProfile  bool              `json:"hasNativeProfile"`
+	NativeProfileHost string            `json:"nativeProfileHost"`
+	NativeProfilePort int               `json:"nativeProfilePort"`
+	Tunnel            TunnelTask        `json:"tunnel"`
+	Error             string            `json:"error"`
+	Protocol          string            `json:"protocol"`
+	Host              string            `json:"host"`
+	Started           string            `json:"started"`
+	HAPP              HAPPTask          `json:"happ"`
+	PortTask          PortTask          `json:"portTask"`
+	PortConflict      bool              `json:"portConflict"`
+	NeedsFreshProfile bool              `json:"needsFreshProfile"`
 }
 
 type App struct {
-	mu         sync.Mutex
-	token      string
-	status     AppStatus
-	busy       bool
-	happBusy   bool
-	portBusy   bool
-	portKey    string
-	lastAccess time.Time
-	started    bool
+	gatewayBusy        bool
+	mu                 sync.Mutex
+	token              string
+	status             AppStatus
+	busy               bool
+	happBusy           bool
+	tunnelBusy         bool
+	wantConnected      bool
+	tunnelConnectedAt  string
+	tunnelProfile      ptunnel.Profile
+	nativeSession      *nativeSession
+	portBusy           bool
+	portKey            string
+	lastAccess         time.Time
+	started            bool
+	savedServers       []SavedServer
+	expectFreshProfile bool
+	installProfileSeen bool
+	quitCh             chan struct{}
+	quitOnce           sync.Once
+}
+
+var errExistingInstanceNotified = errors.New("existing instance notified")
+
+func (a *App) requestQuit() {
+	a.quitOnce.Do(func() {
+		if a.quitCh != nil {
+			close(a.quitCh)
+		}
+	})
 }
 
 // Strip terminal control sequences before placing server output in the browser.
@@ -116,8 +159,8 @@ func validate(r InstallRequest) error {
 			return errors.New("Файл SSH-ключа не найден на этом компьютере.")
 		}
 	}
-	if r.Protocol != "vless" && r.Protocol != "hy2" {
-		return errors.New("Выбери VLESS + REALITY или Hysteria 2.")
+	if r.Protocol != "vless" && r.Protocol != "hy2" && r.Protocol != "portline" {
+		return errors.New("Выбери Portline Tunnel, VLESS + REALITY или Hysteria 2.")
 	}
 	if r.Protocol == "vless" && (!sniRe.MatchString(r.SNI) || strings.Contains(r.SNI, "..")) {
 		return errors.New("Введи корректный TLS SNI, например www.cloudflare.com.")
@@ -136,9 +179,33 @@ func (a *App) modify(fn func(*AppStatus)) {
 func (a *App) appendLog(line string) {
 	line = terminalEscapeRE.ReplaceAllString(line, "")
 	line = strings.TrimSpace(strings.ReplaceAll(line, "\r", ""))
+	if strings.HasPrefix(line, "PORTLINE_GATEWAY|") {
+		info, err := parseGatewayInspection(line)
+		a.modify(func(s *AppStatus) {
+			if err != nil {
+				s.GatewayError = err.Error()
+			} else {
+				s.Gateway = info
+			}
+		})
+		return
+	}
+	if strings.HasPrefix(line, profilePrefix) {
+		if err := a.setTunnelProfile(strings.TrimPrefix(line, profilePrefix)); err != nil {
+			a.modify(func(s *AppStatus) {
+				s.Logs = append(s.Logs, "Не удалось сохранить конфигурацию: "+err.Error())
+			})
+		}
+		return
+	}
+	if strings.Contains(line, profilePrefix) {
+		return
+	}
 	if line == "" {
 		return
 	}
+	// Profile transfer is base64 and intentionally longer than a log line.
+	// Never show it in installation logs, including on validation failure.
 	if len(line) > 500 {
 		line = line[:500] + "…"
 	}
@@ -170,7 +237,7 @@ func (a *App) appendLog(line string) {
 			return
 		}
 		// Do not retain URIs from third-party installers accidentally printed to stdout.
-		if strings.Contains(line, "vless://") || strings.Contains(line, "hysteria2://") {
+		if strings.Contains(line, "vless://") || strings.Contains(line, "hysteria2://") || strings.Contains(line, "PrivateKey =") {
 			return
 		}
 		if strings.Contains(line, " уже занят") && (strings.HasPrefix(line, "TCP ") || strings.HasPrefix(line, "UDP ")) {

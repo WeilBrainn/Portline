@@ -1,8 +1,13 @@
 Portline.exe
 portline-linux-amd64
+.cache/
 *.exe.tmp
 *.test
 *.log
 *.partial
 .vscode/
 .idea/
+android/.gradle/
+android/.kotlin/
+android/**/build/
+android/local.properties

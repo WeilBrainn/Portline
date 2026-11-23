@@ -4,6 +4,10 @@ on:
   push:
     paths:
       - '*.go'
+      - 'cmd/**'
+      - 'internal/**'
+      - 'build.ps1'
+      - 'build.bat'
       - 'go.mod'
       - 'ui/**'
       - 'scripts/**'
@@ -16,9 +20,20 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-      - run: go test ./...
-      - run: go build -trimpath -ldflags="-H windowsgui -s -w" -o Portline.exe .
+      - run: pwsh -File ./build.ps1
       - uses: actions/upload-artifact@v4
         with:
           name: Portline-windows-x64
           path: Portline.exe
+
+  linux-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+      - name: Test Bash installer parser and Go packages
+        run: |
+          go test ./...
+          bash -n scripts/*.sh

@@ -4,7 +4,7 @@
   <meta charset="utf-8"/>
   <meta content="width=device-width,initial-scale=1" name="viewport"/>
   <meta content="%%TOKEN%%" name="app-token"/>
-  <meta content="#22323b" name="theme-color"/>
+  <meta content="#070b12" name="theme-color"/>
   <title>
    Portline — настройка VPS
   </title>
@@ -95,7 +95,7 @@
         Подключение
        </strong>
        <small>
-        Ссылка для HAPP
+        Параметры подключения
        </small>
       </span>
       <span class="step-mark">
@@ -137,15 +137,15 @@
       <span>
        /
       </span>
-      <strong>
-       Настройка сервера
+      <strong id="crumbStep">
+       Доступ к серверу
       </strong>
      </div>
      <div class="top-right">
-      <span class="top-indicator">
+      <span class="top-indicator" id="topIndicator">
        <span class="indicator-pulse">
        </span>
-       Локальная панель
+       <span id="topIndicatorText">Локальная панель</span>
       </span>
       <button aria-label="Закрыть программу" class="quit-btn" id="quitBtn" title="Закрыть программу" type="button">
        ×
@@ -167,9 +167,63 @@
         Подключение к VPS
        </h1>
        <p class="intro">
-        Введи адрес и данные SSH. Они нужны для установки серверного ПО и не сохраняются в настройках Portline.
+        Введи адрес и данные SSH. Профиль сервера можно сохранить локально и быстро загружать позже. Пароль SSH по-прежнему не записывается на диск.
        </p>
-       <form id="serverForm" novalidate="">
+       <div class="import-banner">
+        <div>
+         <span class="micro">ГОТОВЫЙ ПРОФИЛЬ</span>
+         <strong>Уже есть конфиг .portline или ключ?</strong>
+         <p>Импортируй файл или вставь ключ-строку от друга и сразу переходи к подключению без SSH.</p>
+        </div>
+        <div class="import-banner-actions">
+         <button class="secondary-btn compact-btn" id="importTunnelBtn" type="button">Выбрать файл</button>
+         <button class="secondary-btn compact-btn" id="pasteTunnelBtn" type="button">Вставить ключ</button>
+        </div>
+        <input type="file" id="importTunnelFile" accept=".portline,.txt,.json" hidden>
+       </div>
+       <div class="paste-tunnel-box" id="pasteTunnelBox" hidden>
+        <div class="field">
+         <label for="pasteTunnelInput">Ключ-конфиг Portline (portline://... или строка профиля)</label>
+         <div class="paste-tunnel-row">
+          <input id="pasteTunnelInput" placeholder="Вставь строку portline://..." autocomplete="off" spellcheck="false"/>
+          <button class="primary-btn compact-btn" id="applyPasteTunnelBtn" type="button">Применить</button>
+         </div>
+        </div>
+       </div>
+       <div class="saved-profiles">
+        <div class="saved-profiles-head">
+         <div>
+          <span class="micro">БЫСТРЫЙ ДОСТУП</span>
+          <strong>Сохранённые серверы</strong>
+         </div>
+         <button class="secondary-btn compact-btn" id="saveProfileBtn" type="button">Сохранить текущий</button>
+        </div>
+        <div class="saved-profiles-grid">
+         <div class="field">
+          <label for="savedProfilesSelect">Выбери профиль</label>
+          <select id="savedProfilesSelect">
+           <option value="">Нет сохранённых профилей</option>
+          </select>
+         </div>
+         <div class="field">
+          <label for="profileName">Название профиля</label>
+          <input id="profileName" placeholder="Например: Германия · основной VPS" spellcheck="false"/>
+         </div>
+        </div>
+        <div class="saved-profiles-actions">
+         <button class="secondary-btn compact-btn" id="loadProfileBtn" type="button">Загрузить в форму</button>
+         <button class="secondary-btn compact-btn danger-btn" id="deleteProfileBtn" type="button">Удалить</button>
+         <span class="action-helper">Сохраняются адрес, SSH-порт, логин, тип авторизации, протокол и VPN-порт.</span>
+        </div>
+        <label class="save-password-toggle" for="savePasswordProfile">
+         <input id="savePasswordProfile" type="checkbox"/>
+         <span>
+          <strong>Сохранять SSH-пароль вместе с профилем</strong>
+          <small id="passwordStorageHint">Пароль будет защищён локальным системным хранилищем.</small>
+         </span>
+        </label>
+       </div>
+       <form id="serverForm" class="form-card" novalidate="">
         <div class="input-stack">
          <div class="field">
           <label for="host">
@@ -268,7 +322,12 @@
         Выбери протокол и порт. Перед установкой можно проверить, не занят ли порт на VPS.
        </p>
        <div aria-label="Выбор протокола" class="protocol-list">
-        <button aria-pressed="true" class="protocol-option selected" data-protocol="vless" type="button">
+        <button aria-pressed="true" class="protocol-option selected" data-protocol="portline" type="button">
+         <div class="protocol-icon"><svg aria-hidden="true" viewBox="0 0 40 40"><path d="M9 20h22M20 9v22M12 12l16 16M28 12 12 28" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"/></svg></div>
+         <div class="protocol-details"><strong>Portline Tunnel <span class="proto-badge">Рекомендуется</span></strong><span>TCP / TLS 1.3 · собственный клиент Windows</span></div>
+         <span class="proto-check">✓</span>
+        </button>
+        <button aria-pressed="false" class="protocol-option" data-protocol="vless" type="button">
          <div class="protocol-icon">
           <svg aria-hidden="true" viewbox="0 0 40 40">
            <path d="M7 29V11h10v18M17 20h9l7-9M26 20l7 9" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="2.5">
@@ -319,12 +378,12 @@
           <label for="vpnPort">
            Порт протокола
           </label>
-          <input id="vpnPort" max="65535" min="1" type="number" value="443"/>
+          <input id="vpnPort" max="65535" min="1" type="number" value="8443"/>
           <span class="field-hint" id="portHint">
            TCP, по умолчанию 443
           </span>
          </div>
-         <div class="field" id="sniBox">
+         <div class="field hidden" id="sniBox">
           <label for="sni">
            TLS SNI
           </label>
@@ -335,7 +394,16 @@
          </div>
         </div>
        </div>
-       <div aria-labelledby="portToolTitle" class="port-tool">
+       <div class="gateway-tool" id="gatewayTool">
+ <div class="gateway-head"><div><span class="micro">УЖЕ УСТАНОВЛЕННЫЙ СЕРВЕР</span><strong>Portline Gateway</strong><p>Проверка выполняется по SSH и ничего не меняет на VPS.</p></div><button type="button" class="secondary-btn" id="gatewayInspectBtn">Проверить Gateway</button></div>
+ <div id="gatewayResult" class="gateway-result" hidden role="status" aria-live="polite">
+  <strong id="gatewayHeadline">Проверяем сервер…</strong>
+  <p id="gatewayMessage"></p>
+  <div class="gateway-facts" id="gatewayFacts"></div>
+  <div class="gateway-actions"><button type="button" class="primary-btn" id="gatewayUseBtn" hidden>Использовать существующий сервер</button><button type="button" class="secondary-btn" id="gatewayUpdateBtn" hidden>Обновить с резервной копией</button></div>
+ </div>
+</div>
+<div aria-labelledby="portToolTitle" class="port-tool">
         <div class="port-tool-head">
          <div>
           <span class="micro">
@@ -478,12 +546,17 @@
         Сервер настроен
        </h1>
        <p class="intro">
-        Служба запущена и добавлена в автозапуск. Чтобы подключиться с этого компьютера, импортируй профиль в HAPP.
+        <span id="successIntro">Служба готова. Подключаем защищённый туннель на этом компьютере.</span>
        </p>
-       <div class="result-card">
+       <div class="success-stats">
+        <div class="success-stat"><span>Узел</span><strong id="successHost">—</strong></div>
+        <div class="success-stat"><span>Протокол</span><strong id="successProtocol">—</strong></div>
+        <div class="success-stat"><span>Порт</span><strong id="successPort">—</strong></div>
+       </div>
+       <div class="result-card" id="resultCard">
         <div class="result-heading">
          <span class="micro">
-          ССЫЛКА ПОДКЛЮЧЕНИЯ
+          <span id="profileLabel">ПРОФИЛЬ ПОДКЛЮЧЕНИЯ</span>
          </span>
          <span class="result-private">
           <span>
@@ -508,7 +581,69 @@
          </button>
         </div>
        </div>
-       <div class="happ-setup">
+       <div class="happ-setup" id="nativeSetup" hidden>
+        <div class="happ-setup-title">
+          <span class="micro">ПОДКЛЮЧЕНИЕ ЭТОГО КОМПЬЮТЕРА</span>
+          <strong>Portline Tunnel · системный туннель</strong>
+          <p>Собственный VPN-клиент Portline с TLS 1.3. При первом подключении устанавливается низкоуровневый сетевой адаптер Wintun. Для изменения маршрутов требуются права администратора.</p>
+        </div>
+        <div class="connection-hero" id="connectionHero" data-state="idle">
+         <div class="connection-orb" aria-hidden="true">
+          <span class="orb-ring"></span>
+          <span class="orb-ring orb-ring-2"></span>
+          <span class="connection-orb-core"></span>
+         </div>
+         <div class="connection-copy">
+          <span class="micro">СОСТОЯНИЕ СОЕДИНЕНИЯ</span>
+          <strong id="connectionState">Не подключено</strong>
+          <span class="connection-caption" id="connectionCaption">Полный туннель IPv4 · блокировка утечек DNS, IPv6 и локальных обходов</span>
+          <div class="shield-pills" id="shieldPills">
+           <span class="shield-pill">0.0.0.0/0 → VPS</span>
+           <span class="shield-pill">DNS Lock</span>
+           <span class="shield-pill">IPv6 Blocked</span>
+           <span class="shield-pill" id="guardModePill" hidden>Защита: —</span>
+          </div>
+         </div>
+        </div>
+        <div class="telemetry-grid" id="telemetryGrid">
+         <div class="telemetry-item"><span>Пинг</span><strong id="metricLatency">—</strong></div>
+         <div class="telemetry-item"><span>Отправлено</span><strong id="metricSent">0</strong></div>
+         <div class="telemetry-item"><span>Получено</span><strong id="metricRecv">0</strong></div>
+         <div class="telemetry-item"><span>Время</span><strong id="metricUptime">00:00:00</strong></div>
+        </div>
+        <div class="happ-setup-actions connection-actions">
+          <button class="primary-btn" id="nativeConnectBtn" type="button">Подключить VPN</button>
+          <button class="secondary-btn" id="nativeDisconnectBtn" type="button">Отключить</button>
+          <button class="secondary-btn" id="nativeDiagnoseBtn" type="button">Проверить протокол</button>
+          <a class="secondary-btn" href="https://browserleaks.com/ip" target="_blank" rel="noopener noreferrer" id="leakCheckLink" hidden>Проверить IP / DNS ↗</a>
+        </div>
+        <div class="share-config-card">
+         <div class="share-config-copy">
+          <span class="micro">ОБЩИЙ ДОСТУП · N ПОЛЬЗОВАТЕЛЕЙ</span>
+          <strong>Поделиться VPN с друзьями</strong>
+          <p>Один сервер поддерживает тысячи одновременных подключений. Отправь ключ-строку или файл <code>.portline</code> — каждый получит свой адрес в туннеле.</p>
+         </div>
+         <div class="share-config-actions">
+          <button class="secondary-btn compact-btn" id="copyTunnelConfigBtn" type="button">Скопировать ключ</button>
+          <button class="secondary-btn compact-btn" id="exportTunnelBtn" type="button">Скачать .portline</button>
+         </div>
+        </div>
+        <p class="native-profile-info" id="nativeProfileInfo">Локальный профиль ещё не сохранён.</p>
+        <p id="nativeStatus" role="status" aria-live="polite" class="happ-message">Готово к проверке подключения.</p>
+        <div class="firewall-fix" id="firewallFix" hidden>
+          <div>
+           <strong>Режим защиты: только маршруты</strong>
+           <p id="firewallFixText">Брандмауэр Windows выключен, поэтому Portline защищает через маршруты, DNS и отключение IPv6. Это работает, но при аварийном закрытии программы трафик может пойти напрямую. Для усиленной защиты можно включить брандмауэр: профили «Домен», «Частная», «Общедоступная»; существующие правила не меняются, входящие подключения без разрешающего правила начнут блокироваться.</p>
+          </div>
+          <button class="secondary-btn" id="enableFirewallBtn" type="button">Включить брандмауэр</button>
+        </div>
+        <div class="diagnostic-result" id="diagnosticResult" role="status" aria-live="polite" hidden>
+          <strong id="diagnosticTitle">Проверка соединения</strong>
+          <p id="diagnosticMessage"></p>
+          <p id="diagnosticAdvice"></p>
+        </div>
+       </div>
+       <div class="happ-setup" id="happSetup">
         <div class="happ-setup-title">
          <span class="micro">
           ПОДКЛЮЧЕНИЕ НА ЭТОМ ПК
@@ -539,7 +674,7 @@
          !
         </span>
         <p>
-         Ссылка содержит ключ доступа — не передавай её другим. Для полного туннеля требуется включить TUN в HAPP и проверить DNS/IPv6. Для Hysteria 2 клиент должен проверять pinSHA256.
+         Portline Tunnel пока является тестовой реализацией. Не используй его для чувствительных данных до полноценной проверки маршрутов, утечек и устойчивости подключения.
         </p>
        </div>
        <div class="action-row">
@@ -571,6 +706,7 @@
         <div class="route-cable">
          <span>
          </span>
+         <i class="cable-packet"></i>
         </div>
         <div class="route-endpoint route-server">
          VPS
@@ -624,7 +760,7 @@
         Настройка без терминала
        </h3>
        <p id="tipText">
-        Portline подключится к VPS по SSH, установит сервис и создаст ссылку для импорта в HAPP.
+        Portline подключится к VPS по SSH и установит выбранный протокол. Для встроенного режима ключ будет сохранён локально.
        </p>
        <div class="guidance-divider">
        </div>

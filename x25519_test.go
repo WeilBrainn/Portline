@@ -1,17 +1,22 @@
 package main
 
 import (
+	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Test the exact Bash parser embedded in the VPS installer. A Go-only reimplementation
 // would not have caught the Xray 26.11.9 label regression.
 func TestX25519ParserXrayOutputVariants(t *testing.T) {
-	if _, err := exec.LookPath("bash"); err != nil {
-		t.Skip("Bash unavailable; run Bash parser regression tests on Linux/CI")
+	bash, err := exec.LookPath("bash")
+	if err != nil || !usableBash(bash) {
+		t.Skip("Usable Bash unavailable (e.g. WSL without /bin/bash); the installer parser is tested on Linux/CI")
 	}
 	src, err := os.ReadFile("scripts/vless.sh")
 	if err != nil {
@@ -45,7 +50,7 @@ else
   printf 'INVALID\n'
 fi
 `
-			cmd := exec.Command("bash", "-c", shell, "portline-parser-test", tc.input)
+			cmd := exec.Command(bash, "-c", shell, "portline-parser-test", tc.input)
 			result, err := cmd.CombinedOutput()
 			if err != nil {
 				t.Fatalf("bash failed: %s: %v", result, err)
@@ -59,4 +64,28 @@ fi
 			}
 		})
 	}
+}
+
+// Windows can find bash.exe even when WSL cannot launch /bin/bash.
+// The availability probe must reject a command that exists but fails to run.
+func TestBashProbeRejectsBrokenExecutable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix shell fixture")
+	}
+	fake := filepath.Join(t.TempDir(), "bash")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\necho 'WSL ERROR: /bin/bash not found' >&2\nexit 127\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if usableBash(fake) {
+		t.Fatal("broken bash command was treated as available")
+	}
+}
+
+// Looking up bash.exe is not sufficient on Windows: it may be a WSL launcher
+// whose distribution is missing /bin/bash. Probe that a simple script runs.
+func usableBash(path string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	output, err := exec.CommandContext(ctx, path, "-c", "printf 'portline-bash-ready'").CombinedOutput()
+	return err == nil && string(output) == "portline-bash-ready"
 }

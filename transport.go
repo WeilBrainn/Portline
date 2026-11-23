@@ -201,7 +201,7 @@ func (a *App) runOpenSSH(ctx context.Context, sshbin string, r InstallRequest, s
 		cmd.Env = append(os.Environ(), "SSH_ASKPASS="+self, "SSH_ASKPASS_REQUIRE=force", "DISPLAY=portline:0", "PORTLINE_ASKPASS="+r.Password)
 	}
 	if err := a.streamCommand(cmd); err != nil {
-		return fmt.Errorf("Не удалось подключиться по SSH или завершить настройку: %w. Проверь пароль, доступность SSH-порта и журнал", err)
+		return fmt.Errorf("SSH или удалённая команда: %w", err)
 	}
 	return nil
 }
@@ -317,7 +317,7 @@ func (a *App) runPlink(ctx context.Context, plink string, r InstallRequest, scri
 	cmd := backgroundCommand(ctx, plink, args...)
 	cmd.Stdin = strings.NewReader(script)
 	if err := a.streamCommand(cmd); err != nil {
-		return fmt.Errorf("Не удалось завершить SSH-установку через резервный клиент: %w. Проверь данные SSH и журнал", err)
+		return fmt.Errorf("SSH или удалённая команда (Plink): %w", err)
 	}
 	return nil
 }
@@ -368,8 +368,10 @@ func (a *App) streamCommand(cmd *exec.Cmd) error {
 	}
 	go scan(stdout)
 	go scan(stderr)
-	err = cmd.Wait()
+	// Drain stdout/stderr before Wait closes the pipes; otherwise short SSH
+	// responses can disappear under load and look like an empty server reply.
 	wg.Wait()
+	err = cmd.Wait()
 	return err
 }
 
