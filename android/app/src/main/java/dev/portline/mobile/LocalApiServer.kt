@@ -469,6 +469,7 @@ class LocalApiServer(
                 state = "error"
                 phase = "Ошибка установки"
                 errorText = e.message ?: "Ошибка SSH"
+                logs.add("ОШИБКА: ${e.javaClass.simpleName}: ${e.message ?: "без описания"}")
             }
         } finally {
             synchronized(lock) { busy = false }

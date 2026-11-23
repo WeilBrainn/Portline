@@ -50,7 +50,6 @@ object SshRunner {
             val errStream = channel.errStream
             val outStream = channel.inputStream
             val inPipe = PipedOutputStream()
-            channel.inputStream
             channel.setInputStream(PipedInputStream(inPipe, 65536))
             channel.connect(15_000)
 

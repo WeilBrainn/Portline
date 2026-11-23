@@ -230,9 +230,13 @@ class PortlineVpnService : VpnService() {
         }
     }
 
-    private fun runTunnel(profile: PortlineProfile): Boolean {
-        var established = false
-        check(prepare(this) == null) { "Нет разрешения Android на VPN — нажми «Подключить VPN»" }
+    /**
+     * Opens TCP + TLS 1.3 to the gateway. compat=false uses the system
+     * (Conscrypt/BoringSSL) engine; compat=true uses BouncyCastle JSSE, which
+     * supports Ed25519 server certificates issued by older Portline Gateways.
+     * Returns the socket and negotiated ALPN protocol (or "").
+     */
+    private fun openTls(profile: PortlineProfile, compat: Boolean): Pair<SSLSocket, String> {
         val upstream = Socket()
         tcp = upstream
         log("1/5 Привязка сокета и защита от петли (protect)…")
@@ -248,28 +252,66 @@ class PortlineVpnService : VpnService() {
             override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) = Unit
             override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) = Unit
         }
-        val context = SSLContext.getInstance("TLSv1.3")
+        val lease = "portline-ipv4-lease/1"
+        if (!compat) {
+            val context = SSLContext.getInstance("TLSv1.3")
+            context.init(null, arrayOf<TrustManager>(trust), SecureRandom())
+            val secure = context.socketFactory.createSocket(upstream, profile.host, profile.port, true) as SSLSocket
+            tls = secure
+            val params = secure.sslParameters
+            params.protocols = arrayOf("TLSv1.3")
+            if (Build.VERSION.SDK_INT >= 29) params.applicationProtocols = arrayOf(lease)
+            secure.sslParameters = params
+            log("3/5 TLS 1.3 рукопожатие…")
+            secure.startHandshake()
+            val alpn = if (Build.VERSION.SDK_INT >= 29) (secure.applicationProtocol ?: "") else ""
+            return secure to alpn
+        }
+        val crypto = org.bouncycastle.tls.crypto.impl.jcajce.JcaTlsCryptoProvider()
+            .setProvider(org.bouncycastle.jce.provider.BouncyCastleProvider())
+        val jsse = org.bouncycastle.jsse.provider.BouncyCastleJsseProvider(false, crypto)
+        val context = SSLContext.getInstance("TLS", jsse)
         context.init(null, arrayOf<TrustManager>(trust), SecureRandom())
         val secure = context.socketFactory.createSocket(upstream, profile.host, profile.port, true) as SSLSocket
         tls = secure
-        val params = secure.sslParameters
-        params.protocols = arrayOf("TLSv1.3")
-        if (Build.VERSION.SDK_INT >= 29) {
-            params.applicationProtocols = arrayOf("portline-ipv4-lease/1")
-        }
-        secure.sslParameters = params
-        log("3/5 TLS 1.3 рукопожатие…")
-        try {
-            secure.startHandshake()
-        } catch (e: Exception) {
-            throw IllegalStateException(
-                "Сервер ${profile.host}:${profile.port} отклонил TLS 1.3-рукопожатие. Если на VPS стоит старый Ed25519-сертификат, переустанови Portline Gateway на сервере. (${e.message})",
-                e
-            )
+        val bc = secure as org.bouncycastle.jsse.BCSSLSocket
+        val bp = bc.parameters
+        bp.protocols = arrayOf("TLSv1.3")
+        bp.applicationProtocols = arrayOf(lease)
+        bc.parameters = bp
+        log("3/5 TLS 1.3 рукопожатие (совместимый режим)…")
+        secure.startHandshake()
+        log("Совместимый режим TLS активен. Рекомендуем обновить Gateway на VPS до ECDSA-сертификата.")
+        return secure to (bc.applicationProtocol ?: "")
+    }
+
+    /** SHA-256 pin input: DER SubjectPublicKeyInfo of the leaf, provider-independent. */
+    private fun spkiOf(secure: SSLSocket): ByteArray {
+        val der = secure.session.peerCertificates[0].encoded
+        return org.bouncycastle.asn1.x509.Certificate.getInstance(der).subjectPublicKeyInfo.encoded
+    }
+
+    private fun runTunnel(profile: PortlineProfile): Boolean {
+        var established = false
+        check(prepare(this) == null) { "Нет разрешения Android на VPN — нажми «Подключить VPN»" }
+        val (secure, alpn) = try {
+            openTls(profile, compat = false)
+        } catch (e: javax.net.ssl.SSLException) {
+            if (userStopped.get()) throw e
+            log("Системный TLS отклонён (${e.javaClass.simpleName}). Пробуем совместимый TLS-движок (Ed25519)…")
+            try { tls?.close() } catch (_: Exception) {}
+            try { tcp?.close() } catch (_: Exception) {}
+            try {
+                openTls(profile, compat = true)
+            } catch (e2: Exception) {
+                throw IllegalStateException(
+                    "Сервер ${profile.host}:${profile.port} отклонил TLS 1.3-рукопожатие. Проверь, что на этом порту работает Portline Gateway. (${e2.message ?: e.message})",
+                    e2
+                )
+            }
         }
 
-        val leaf = secure.session.peerCertificates[0] as X509Certificate
-        val actual = MessageDigest.getInstance("SHA-256").digest(leaf.publicKey.encoded)
+        val actual = MessageDigest.getInstance("SHA-256").digest(spkiOf(secure))
         check(MessageDigest.isEqual(actual, profile.pin)) { "TLS-ключ сервера не совпал с профилем" }
         log("4/5 Авторизация токена…")
 
@@ -279,7 +321,7 @@ class PortlineVpnService : VpnService() {
         netOut.flush()
         check(netIn.readUnsignedByte() == 1) { "Gateway не подтвердил токен доступа" }
 
-        val clientIP = if (Build.VERSION.SDK_INT >= 29 && secure.applicationProtocol == "portline-ipv4-lease/1") {
+        val clientIP = if (alpn == "portline-ipv4-lease/1") {
             val ip = ByteArray(4)
             netIn.readFully(ip)
             require(ip[0].toInt() == 10 && ip[1].toInt() == 76 && ip[2].toInt() == 24 && (ip[3].toInt() and 255) in 3..254) {

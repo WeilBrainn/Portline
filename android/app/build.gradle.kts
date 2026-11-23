@@ -7,8 +7,8 @@ android {
         applicationId = "dev.portline.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10
-        versionName = "1.4.10"
+        versionCode = 11
+        versionName = "1.4.11"
     }
     signingConfigs {
         getByName("debug") {
@@ -23,10 +23,17 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+    packaging {
+        resources {
+            excludes += setOf("META-INF/versions/*/OSGI-INF/MANIFEST.MF", "META-INF/DEPENDENCIES", "META-INF/LICENSE*", "META-INF/NOTICE*")
+        }
+    }
 }
 
 dependencies {
     implementation("com.github.mwiede:jsch:0.2.21")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.79")
+    implementation("org.bouncycastle:bctls-jdk18on:1.79")
 }
 
 val syncPortlineAssets by tasks.registering(Copy::class) {
