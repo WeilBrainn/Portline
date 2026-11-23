@@ -6,7 +6,8 @@ package main
 
 import (
 	"context"
-	"crypto/ed25519"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 
 	"crypto/tls"
@@ -111,7 +112,7 @@ func provision(path, host string, port int) error {
 		return fmt.Errorf("existing server config invalid: %w", err)
 	}
 	if os.IsNotExist(err) {
-		_, privateKey, err := ed25519.GenerateKey(rand.Reader)
+		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			return err
 		}

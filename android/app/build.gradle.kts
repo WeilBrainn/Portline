@@ -7,8 +7,8 @@ android {
         applicationId = "dev.portline.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.4.4"
+        versionCode = 5
+        versionName = "1.4.5"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

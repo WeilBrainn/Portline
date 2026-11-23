@@ -263,7 +263,7 @@ class PortlineVpnService : VpnService() {
             secure.startHandshake()
         } catch (e: Exception) {
             throw IllegalStateException(
-                "TLS 1.3-рукопожатие отклонено ${profile.host}:${profile.port}. Проверь, что на этом порту запущен Portline Gateway (${e.message})",
+                "Сервер ${profile.host}:${profile.port} отклонил TLS 1.3-рукопожатие. Если на VPS стоит старый Ed25519-сертификат, переустанови Portline Gateway на сервере. (${e.message})",
                 e
             )
         }
