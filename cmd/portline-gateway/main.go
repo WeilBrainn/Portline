@@ -111,7 +111,16 @@ func provision(path, host string, port int) error {
 	if err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("existing server config invalid: %w", err)
 	}
-	if os.IsNotExist(err) {
+	needGenerate := os.IsNotExist(err)
+	if !needGenerate {
+		if kp, kerr := tls.X509KeyPair([]byte(c.Certificate), []byte(c.PrivateKey)); kerr == nil && len(kp.Certificate) > 0 {
+			if leaf, lerr := x509.ParseCertificate(kp.Certificate[0]); lerr == nil && leaf.PublicKeyAlgorithm == x509.Ed25519 {
+				_ = os.Remove(path)
+				needGenerate = true
+			}
+		}
+	}
+	if needGenerate {
 		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
 			return err

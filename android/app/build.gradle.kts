@@ -7,8 +7,8 @@ android {
         applicationId = "dev.portline.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.4.7"
+        versionCode = 8
+        versionName = "1.4.8"
     }
     signingConfigs {
         getByName("debug") {

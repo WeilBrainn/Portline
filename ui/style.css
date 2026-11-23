@@ -1271,7 +1271,9 @@ body.is-vpn-connected .telemetry-item { border-color: rgba(16, 185, 129, 0.25); 
 .orb-power-icon,
 .connection-server-pill,
 .mobile-quick-card,
-.top-util-icon {
+.top-util-icon,
+.step-icon,
+.step-mob-label {
   display: none;
 }
 
@@ -1332,23 +1334,67 @@ body.is-vpn-connected .telemetry-item { border-color: rgba(16, 185, 129, 0.25); 
   .top-util-btn .btn-label { display: none; }
 
   .sidebar {
-    order: 2;
-    padding: 10px 16px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
     border-right: none;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-    background: transparent;
+    border-top: 1px solid rgba(148, 163, 184, 0.14);
+    border-bottom: none;
+    background: rgba(7, 11, 18, 0.92);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
   }
   .sidebar .brand, .sidebar-intro, .sidebar-bottom { display: none; }
-  .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-  .step { padding: 8px 6px; gap: 5px; min-width: 0; justify-content: center; }
-  .step-text small, .step-mark { display: none; }
-  .step-text strong { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .content { order: 3; }
-  .app-credit { order: 4; }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+  .step {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 6px 4px;
+    gap: 4px;
+    min-width: 0;
+    border-radius: 12px;
+    border: none;
+    background: transparent;
+    color: var(--subtle);
+  }
+  .step.is-active {
+    background: rgba(56, 189, 248, 0.12);
+    color: var(--accent);
+    box-shadow: none;
+  }
+  .step.is-done { color: var(--ink-soft); }
+  .step:disabled { opacity: 0.36; }
+  .step-icon {
+    display: block;
+    width: 19px;
+    height: 19px;
+    flex-shrink: 0;
+  }
+  .step-mob-label {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1.15;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .step-num, .step-text, .step-mark { display: none; }
+  .content { order: 2; padding-bottom: 16px; }
+  .app-credit { order: 3; padding: 8px 16px calc(82px + env(safe-area-inset-bottom, 0px)); }
 }
 @media (max-width: 660px) {
-  .content { padding: 12px 14px; }
-  .panel { padding: 18px 16px; border-radius: 16px; }
+  .content { padding: 10px 14px 14px; }
   .detail-col { display: none; }
   .fields-two, .saved-profiles-grid, .success-stats { grid-template-columns: 1fr; }
   .import-banner, .share-config-card, .gateway-head, .port-tool-head, .firewall-fix {
@@ -1356,24 +1402,70 @@ body.is-vpn-connected .telemetry-item { border-color: rgba(16, 185, 129, 0.25); 
     align-items: stretch;
   }
   .paste-tunnel-row { flex-direction: column; align-items: stretch; }
-  .steps { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
-  .step {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    padding: 7px 4px;
-    gap: 3px;
-    min-width: 0;
+
+  /* Unified Minimalist Style across ALL tabs on Mobile */
+  .panel {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 6px 2px 10px;
   }
-  .step-num { font-size: 10px; }
-  .step-text { width: 100%; min-width: 0; align-items: center; }
-  .step-text strong {
-    font-size: 10px;
-    line-height: 1.2;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .panel > .panel-eyebrow,
+  .panel > .intro {
+    display: none;
+  }
+  .panel > h1 {
+    font-size: 21px;
+    font-weight: 700;
+    margin: 2px 0 14px;
+    letter-spacing: -0.02em;
+  }
+  .saved-profiles,
+  .import-banner,
+  .form-card,
+  .protocol-card,
+  .happ-setup,
+  .gateway-tool,
+  .port-tool,
+  .install-card,
+  .result-card,
+  .notice {
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(13, 21, 36, 0.84);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .terminal {
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: #060b14;
+  }
+  .field input,
+  .field select {
+    min-height: 44px;
+    border-radius: 12px;
+    background: rgba(7, 11, 18, 0.72);
+    border-color: rgba(148, 163, 184, 0.18);
+  }
+  .primary-btn,
+  .secondary-btn {
+    min-height: 42px;
+    border-radius: 12px;
+  }
+  .import-banner-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .saved-profiles-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .saved-profiles-actions .action-helper {
+    grid-column: 1 / -1;
+    font-size: 11.5px;
   }
 
   /* Variant 2 Minimalist Mobile VPN Screen (Panel 4) */
