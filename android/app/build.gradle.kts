@@ -7,8 +7,16 @@ android {
         applicationId = "dev.portline.mobile"
         minSdk = 26
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.4.6"
+        versionCode = 7
+        versionName = "1.4.7"
+    }
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file(System.getenv("PORTLINE_KEYSTORE_PATH") ?: "../debug.keystore")
+            storePassword = System.getenv("PORTLINE_KEYSTORE_PASSWORD") ?: "android"
+            keyAlias = System.getenv("PORTLINE_KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword = System.getenv("PORTLINE_KEY_PASSWORD") ?: "android"
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
