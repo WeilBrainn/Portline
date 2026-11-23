@@ -1317,6 +1317,13 @@ body.is-vpn-connected .telemetry-item { border-color: rgba(16, 185, 129, 0.25); 
   transition: background 0.18s ease, transform 0.15s ease;
 }
 .update-pill:hover { background: rgba(56, 189, 248, 0.24); transform: translateY(-1px); }
+.app-credit {
+  padding: 14px 36px 22px;
+  text-align: right;
+  color: var(--subtle);
+  font: 11px "Cascadia Code", Consolas, monospace;
+  opacity: 0.78;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
