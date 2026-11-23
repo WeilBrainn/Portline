@@ -209,8 +209,10 @@ class PortlineVpnService : VpnService() {
     }
 
     private fun runTunnel(profile: PortlineProfile) {
+        check(prepare(this) == null) { "Нет разрешения Android на VPN — нажми «Подключить VPN»" }
         val upstream = Socket()
         tcp = upstream
+        upstream.bind(InetSocketAddress(0))
         check(protect(upstream)) { "Не удалось исключить служебный сокет VPN из туннеля" }
         upstream.connect(InetSocketAddress(profile.host, profile.port), 15000)
         upstream.soTimeout = 20000

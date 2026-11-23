@@ -17,6 +17,7 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowInsets
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -28,7 +29,7 @@ import java.net.URL
 
 class MainActivity : Activity() {
     companion object {
-        private const val APP_VERSION = "1.4.0"
+        private const val APP_VERSION = "1.4.2"
         private const val REQ_VPN = 1
         private const val REQ_IMPORT = 2
         private const val REQ_NOTIFY = 3
@@ -89,6 +90,22 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(22), dp(20), dp(22))
             setBackgroundColor(bg)
+        }
+        root.setOnApplyWindowInsetsListener { v, insets ->
+            val topInset: Int
+            val bottomInset: Int
+            if (Build.VERSION.SDK_INT >= 30) {
+                val sys = insets.getInsets(WindowInsets.Type.systemBars())
+                topInset = sys.top
+                bottomInset = sys.bottom
+            } else {
+                @Suppress("DEPRECATION")
+                topInset = insets.systemWindowInsetTop
+                @Suppress("DEPRECATION")
+                bottomInset = insets.systemWindowInsetBottom
+            }
+            v.setPadding(dp(20), dp(14) + topInset, dp(20), dp(20) + bottomInset)
+            insets
         }
 
         // Top header
